@@ -1,0 +1,77 @@
+# Week 3 — RAG Grounding Eval
+#
+# Tests retrieval relevance and hallucination suppression.
+# Run: npx promptfoo@latest eval --config week-03-rag-grounding.yaml
+#
+# Prerequisites:
+#   export OPENROUTER_API_KEY=sk-or-your-key
+#   python -c "from src.rag import index_documents; index_documents()"  # pre-index
+
+description: "Week 3 — RAG grounding: retrieval relevance, hallucination suppression"
+
+providers:
+  - id: openrouter:openai/gpt-4o-mini
+    label: gpt-4o-mini
+    config:
+      temperature: 0
+
+prompts:
+  - |-
+    You are a knowledge base assistant. Answer the user's question
+    using ONLY the provided context below. If the context does not
+    contain the answer, say "I don't have information about that."
+
+    CONTEXT:
+    {{context}}
+
+    Question: {{question}}
+
+tests:
+  # Test 1: In-corpus question — answer should reference the doc
+  - vars:
+      question: "What endpoints does the payment API expose?"
+      context: |
+        ## Endpoints
+        POST /v1/payments - Create a new payment
+        GET /v1/payments/{id} - Retrieve a payment by ID
+        POST /v1/payments/{id}/refund - Refund a payment
+        GET /v1/payments/health - Health check
+    assert:
+      - type: contains
+        value: "/v1/payments"
+
+  # Test 2: Out-of-corpus — model should not invent
+  - vars:
+      question: "What's the revenue forecast for Q4 2030?"
+      context: |
+        The payment API supports creating and retrieving payments.
+        Authentication uses Bearer tokens.
+    assert:
+      - type: not-contains
+        value: "$"
+      - type: llm-rubric
+        value: "does not invent a revenue figure or forecast"
+
+  # Test 3: SLA question — should reference the grounding doc
+  - vars:
+      question: "What is the SLA for the inventory service?"
+      context: |
+        The inventory service does not have a formal SLA defined.
+        Contact the catalog team for SLA guarantees.
+    assert:
+      - type: contains
+        value: "SLA"
+      - type: not-contains
+        value: "99.9%"
+
+  # Test 4: Setup question — should reference CONTRIBUTING.md
+  - vars:
+      question: "How do I set up DevBuddy?"
+      context: |
+        Fork the repo. Create venv. pip install -r requirements.txt.
+        Copy .env.example to .env. Run python src/verification.py.
+    assert:
+      - type: contains
+        value: "venv"
+      - type: not-contains
+        value: "I don't know"

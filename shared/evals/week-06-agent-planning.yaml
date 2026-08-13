@@ -1,0 +1,64 @@
+# Week 6 — Agent Planning Eval
+#
+# Tests agent routing decisions and report quality.
+# Run: npx promptfoo@latest eval --config week-06-agent-planning.yaml
+#
+# Prerequisites:
+#   export OPENROUTER_API_KEY=sk-or-your-key
+#   docker-compose up -d  (Qdrant)
+#   python -c "from src.rag import index_documents; index_documents()"
+
+description: "Week 6 — Agent planning: route correctness, report completeness"
+
+providers:
+  - id: openrouter:openai/gpt-4o-mini
+    label: gpt-4o-mini
+    config:
+      temperature: 0
+
+prompts:
+  - |-
+    You are a site reliability engineer. Produce a service readiness report.
+    Use ONLY the data provided. If data is missing, note it as 'unknown'.
+
+    Context: {{context}}
+    Build status: {{build_status}}
+    Deployments: {{deploys}}
+    Incidents: {{incidents}}
+
+    Generate a report with: summary, build status, recent deployments,
+    active incidents, readiness verdict (READY/BLOCKED), recommended actions.
+
+tests:
+  - vars:
+      context: "Payment API processes transactions. SLA is 99.95% uptime."
+      build_status: '{"status": "degraded", "failing_since": "2026-06-28T07:30:00Z"}'
+      deploys: '[{"sha": "abc123", "status": "success", "timestamp": "2026-06-28T06:45:00Z"}]'
+      incidents: '[{"id": "INC-842", "severity": "Sev1", "summary": "latency spike"}]'
+    assert:
+      - type: contains
+        value: "BLOCKED"
+      - type: contains
+        value: "degraded"
+      - type: contains
+        value: "INC-842"
+
+  - vars:
+      context: "Auth service handles login. SLA is 99.99% uptime."
+      build_status: '{"status": "healthy", "last_deploy": "2026-06-28T08:15:00Z"}'
+      deploys: '[]'
+      incidents: '[]'
+    assert:
+      - type: contains
+        value: "READY"
+      - type: contains
+        value: "healthy"
+
+  - vars:
+      context: ""
+      build_status: '(not checked)'
+      deploys: '(not checked)'
+      incidents: '(not checked)'
+    assert:
+      - type: contains
+        value: "unknown"

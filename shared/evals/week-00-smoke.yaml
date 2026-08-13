@@ -1,0 +1,61 @@
+# Week 0 — Promptfoo Smoke Test
+#
+# A quick tour of what Promptfoo can do.
+# Run: npx promptfoo@latest eval --config week-00-smoke.yaml
+#
+# Prerequisites:
+#   export OPENROUTER_API_KEY=sk-or-your-key
+
+description: "Week 0 — Promptfoo tour: assertions, model comparison, cost"
+
+# ─── Example 1: Test against two models at once ──────────────
+providers:
+  - id: openrouter:openai/gpt-4o-mini
+    label: gpt-4o-mini
+    config:
+      temperature: 0
+  - id: openrouter:google/gemini-2.0-flash-001
+    label: gemini-flash
+    config:
+      temperature: 0
+
+# ─── Example 2: A prompt with a variable ─────────────────────
+prompts:
+  - |-
+    You are a helpful assistant. Answer in exactly one sentence.
+    Question: {{question}}
+
+# ─── Example 3: Assertions — does the output meet expectations? ─
+tests:
+  # Test: basic sanity — model responds at all
+  - vars:
+      question: "What is 2 + 2?"
+    assert:
+      - type: contains
+        value: "4"
+
+  # Test: model stays on topic, not too long
+  - vars:
+      question: "What color is the sky on a clear day?"
+    assert:
+      - type: not-contains
+        value: "I don't know"
+      - type: not-contains
+        value: "As an AI"
+
+  # Test: structured output via prompt (no Pydantic needed)
+  - vars:
+      question: >-
+        Name one programming language.
+        Reply with ONLY valid JSON: {"language": "your answer"}
+    assert:
+      - type: contains-json
+      - type: javascript
+        value: "JSON.parse(output).language.length > 0"
+
+  # Test: Promptfoo tracks cost and latency automatically
+  - vars:
+      question: "Say hello"
+    assert:
+      - type: latency
+        threshold: 10000   # must respond within 10 seconds

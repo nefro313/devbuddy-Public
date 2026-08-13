@@ -10,6 +10,7 @@
 langchain>=0.3.0,<1.0.0
 langchain-openai>=0.2.0,<1.0.0
 pydantic>=2.0.0,<3.0.0
+pydantic-settings>=2.15.0
 python-dotenv>=1.0.0,<2.0.0
 
 # --- Week 3 (RAG) - install when you reach Week 3 ---------------

@@ -1,0 +1,50 @@
+{
+  "service": {
+    "name": "auth-service",
+    "version": "2.1.0",
+    "owner_team": "platform-identity"
+  },
+  "build": {
+    "status": "healthy",
+    "last_deploy": "2026-06-28T08:15:00Z",
+    "failing_since": null
+  },
+  "deployment": {
+    "recent_deploys": [
+      {
+        "sha": "abc123def456",
+        "author": "tabish",
+        "timestamp": "2026-06-28T08:15:00Z",
+        "status": "success"
+      },
+      {
+        "sha": "789ghi012jkl",
+        "author": "alex",
+        "timestamp": "2026-06-27T14:30:00Z",
+        "status": "success"
+      }
+    ],
+    "active_incidents": []
+  },
+  "verdict": {
+    "ready": true,
+    "confidence": "high",
+    "blockers": [],
+    "recommended_next_steps": [
+      "Proceed with v2.1 release",
+      "Monitor auth error rates for 24h post-deploy"
+    ]
+  },
+  "evidence": [
+    {
+      "source": "rag",
+      "content": "auth-service changelog: v2.1 adds session token rotation. Previously deployed successfully in staging.",
+      "relevance_score": 0.92
+    },
+    {
+      "source": "tool",
+      "content": "get_build_status('auth-service') → healthy. Last deploy: 2026-06-28T08:15:00Z. No active incidents.",
+      "relevance_score": null
+    }
+  ]
+}

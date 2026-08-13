@@ -25,10 +25,13 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 from typing import Literal
 
-from src.llm import get_llm
+from src.config import settings
+from src.llm import get_llm, usage_of
 
 # ─── Configuration ─────────────────────────────────────────────
-MODEL = os.environ.get("DEVBUDDY_MODEL", "openai/gpt-4o-mini")
+# Week 1: the model no longer comes from a stray os.environ read. It comes from
+# src/config.py, the one module that touches the environment.
+MODEL = settings.devbuddy_model
 
 # ─── Schema Definition ─────────────────────────────────────────
 # This is a preview of Week 2. Today you just see it work.
@@ -92,16 +95,22 @@ def main():
 
         # Extract the typed object and token usage
         result = response["parsed"]
-        raw = response.get("raw")
-        usage = raw.response_metadata.get("token_usage", {}) if raw else {}
-        prompt_tokens = usage.get("prompt_tokens", 0)
-        completion_tokens = usage.get("completion_tokens", 0)
+        prompt_tokens, completion_tokens = usage_of(response)
         call_tokens = prompt_tokens + completion_tokens
         total_tokens += call_tokens
 
-        # Cost estimate (GPT-4o-mini via OpenRouter: ~$0.15/M input, ~$0.60/M output)
-        cost = (prompt_tokens * 0.15 + completion_tokens * 0.60) / 1_000_000
+        cost = settings.cost_of(prompt_tokens, completion_tokens)
         total_cost += cost
+
+        # `parsed` is None when the model returned something that did not fit
+        # BuildCheck. Report it as a schema failure instead of an AttributeError
+        # traceback — this is exactly the drift Week 2 teaches you to handle.
+        if result is None:
+            print(f"  ❌ Model did not return valid {BuildCheck.__name__} JSON.")
+            print(f"     Raw: {getattr(response.get('raw'), 'content', '')[:200]}")
+            print(f"     Model '{MODEL}' may not support structured output.")
+            print(f"     Try DEVBUDDY_MODEL=openai/gpt-4o-mini in python/.env")
+            sys.exit(1)
 
         print(f"  Status:      {result.status}")
         print(f"  Confidence:  {result.confidence:.0%}")

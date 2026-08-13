@@ -1,0 +1,10 @@
+Update payment processing timeout
+
+Increased the timeout from 30s to 60s for payment-api.
+Some users reported timeouts during peak hours.
+This is a temporary fix — we should investigate the root cause.
+
+Files changed:
+- payment-api/config.py
+- payment-api/handler.py
+- docs/payment-timeout.md

@@ -1,0 +1,137 @@
+# Week 5 — MCP Tool Ecosystem Eval
+#
+# Tests that each MCP tool returns valid, correctly-structured JSON
+# when given real document chunks. Doesn't require the MCP server to
+# be running — tests the synthesis logic directly.
+#
+# Run: npx promptfoo@latest eval --config week-05-mcp-tool-ecosystem.yaml
+#
+# Prerequisites:
+#   export OPENROUTER_API_KEY=sk-or-your-key
+
+description: "Week 5 — MCP tool synthesis: valid JSON, correct structure"
+
+providers:
+  - id: openrouter:openai/gpt-4o-mini
+    label: gpt-4o-mini
+    config:
+      temperature: 0
+
+prompts:
+  - |-
+    You are a data extraction tool. Only use data present in the provided context.
+    Return ONLY valid JSON — no markdown, no prose.
+
+    {{instructions}}
+
+    Context:
+    {{context}}
+
+tests:
+  # ── get_build_status ────────────────────────────────────────
+  - description: "Build status — healthy service"
+    vars:
+      instructions: "Extract the current build/health status. Return JSON with 'status' (healthy/degraded/down/unknown) and 'last_deploy' (ISO timestamp)."
+      context: |
+        # Deployment Log — June 2026
+        ## 2026-06-28 — auth-service v2.1.0
+        - Status: success
+        - SHA: abc123def456
+        - Deployed by: tabish
+        - Duration: 4m 12s
+    assert:
+      - type: is-json
+      - type: javascript
+        value: "JSON.parse(output).status === 'healthy'"
+      - type: javascript
+        value: "'last_deploy' in JSON.parse(output)"
+
+  - description: "Build status — degraded from rolling back"
+    vars:
+      instructions: "Extract the current build/health status. Return JSON with 'status' (healthy/degraded/down/unknown) and 'last_deploy' (ISO timestamp)."
+      context: |
+        # Deployment Log — June 2026
+        ## 2026-06-28 — payment-api v1.8.3
+        - Status: rolling_back
+        - SHA: jkl345mno678
+        - Deployed by: maria
+        - Duration: 6m 45s
+        - Notes: Timeout increased, rollback triggered
+    assert:
+      - type: is-json
+      - type: javascript
+        value: "JSON.parse(output).status === 'degraded'"
+
+  # ── get_recent_deploys ──────────────────────────────────────
+  - description: "Deploys — returns array sorted by timestamp"
+    vars:
+      instructions: "Extract deployment history. Return a JSON array of deploys, each with: sha, author, timestamp, status. Sort by timestamp descending."
+      context: |
+        # Deployment Log — June 2026
+        ## 2026-06-28 — auth-service v2.1.0
+        - Status: success - SHA: abc123 - Deployed by: tabish
+
+        ## 2026-06-27 — payment-api v1.8.3
+        - Status: rolling_back - SHA: jkl345 - Deployed by: maria
+    assert:
+      - type: is-json
+      - type: javascript
+        value: "Array.isArray(JSON.parse(output))"
+      - type: javascript
+        value: "JSON.parse(output).length === 2"
+      - type: javascript
+        value: "JSON.parse(output)[0].status === 'success'"
+
+  # ── get_active_incidents ────────────────────────────────────
+  - description: "Incidents — active only, resolved skipped"
+    vars:
+      instructions: "Extract active (unresolved) incidents only. Return a JSON array with: id, severity, date, summary, status."
+      context: |
+        # Production Incidents — June 2026
+        ## INC-842 — payment-api latency spike
+        - Severity: Sev1
+        - Status: investigating
+        - 15% of requests affected
+
+        ## INC-799 — auth-service deployment failed
+        - Severity: Sev3
+        - Status: resolved
+        - Rollback completed
+    assert:
+      - type: is-json
+      - type: javascript
+        value: "Array.isArray(JSON.parse(output))"
+      - type: javascript
+        value: "JSON.parse(output).length === 1"
+      - type: javascript
+        value: "JSON.parse(output)[0].id === 'INC-842'"
+      - type: not-contains
+        value: "INC-799"
+
+  # ── search_docs ─────────────────────────────────────────────
+  - description: "search_docs — returns chunks with found flag"
+    vars:
+      instructions: "Return a JSON object with 'chunks' (array of strings) and 'found' (bool)."
+      context: |
+        # Payment API — Internal Specification
+        ## Endpoints
+        POST /v1/payments — Create a new payment
+        GET /v1/payments/{id} — Retrieve a payment
+    assert:
+      - type: is-json
+      - type: javascript
+        value: "'chunks' in JSON.parse(output)"
+      - type: javascript
+        value: "'found' in JSON.parse(output)"
+      - type: javascript
+        value: "JSON.parse(output).found === true"
+
+  # ── Empty context — graceful degradation ────────────────────
+  - description: "Empty context — returns unknown/empty gracefully"
+    vars:
+      instructions: "Extract the current build/health status. Return JSON with 'status' and 'last_deploy'."
+      context: "(no data found)"
+    assert:
+      - type: is-json
+      - type: javascript
+        value: "JSON.parse(output).status === 'unknown'"
