@@ -16,6 +16,7 @@ as a subprocess from the repo root all load the same file.
 import os
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # python/ — holds .env and src/. shared/ is a sibling of python/, at the repo root.
@@ -51,6 +52,11 @@ class Settings(BaseSettings):
     # ─── Week 5 — MCP server ─────────────────────────────────────
     mcp_host: str = "127.0.0.1"
     mcp_port: int = 8000
+    # docs/week-05.md was written for MCP SDK 1.x, where SSE was the network
+    # transport. SDK 2.0's Client negotiates streamable-http by default and
+    # errors against a legacy SSE endpoint, so that is the default here.
+    # Set MCP_TRANSPORT=sse to serve the older path instead.
+    mcp_transport: Literal["streamable-http", "sse"] = "streamable-http"
 
     # ─── Week 6 — Agent guards ───────────────────────────────────
     # A runaway agent is a billing incident. These are hard stops, not hints.
@@ -69,9 +75,10 @@ class Settings(BaseSettings):
         return REPO_ROOT / "shared" / "data"
 
     @property
-    def mcp_sse_url(self) -> str:
-        """SSE endpoint the Week 6 agent connects to."""
-        return f"http://{self.mcp_host}:{self.mcp_port}/sse"
+    def mcp_url(self) -> str:
+        """The endpoint the Week 6 agent connects to, for the active transport."""
+        path = "/sse" if self.mcp_transport == "sse" else "/mcp"
+        return f"http://{self.mcp_host}:{self.mcp_port}{path}"
 
     def cost_of(self, prompt_tokens: int, completion_tokens: int) -> float:
         """USD cost of one call. The single place this arithmetic lives."""
@@ -127,5 +134,5 @@ if __name__ == "__main__":
     print(f"  embeddings     {settings.embedding_model}")
     print(f"  chunking       size={settings.chunk_size} overlap={settings.chunk_overlap}")
     print(f"  corpus         {settings.data_dir} ({'found' if settings.data_dir.is_dir() else 'MISSING'})")
-    print(f"  mcp            {settings.mcp_sse_url}")
+    print(f"  mcp            {settings.mcp_url}  ({settings.mcp_transport})")
     print(f"  guards         max_steps={settings.max_steps} max_cost=${settings.max_cost:.2f}")

@@ -24,7 +24,9 @@ sentence-transformers>=3.0.0,<4.0.0
 rank-bm25>=0.2.0,<1.0.0
 
 # --- Week 5 (MCP) ----------------------------------------------
-# mcp>=1.0.0
+# SDK 2.0 renamed FastMCP -> MCPServer and made streamable-http the default
+# client transport. Pin <2.0.0 to follow docs/week-05.md's snippets literally.
+mcp>=1.0.0
 
 # --- Week 6 (Agent) --------------------------------------------
 # langgraph>=0.2.0,<1.0.0
