@@ -8,9 +8,20 @@ This is the foundation module: schemas, rag, tools, mcp_server and agent all
 import ``get_llm()`` from here. None of them construct a client themselves.
 """
 
+import warnings
+
 from langchain_openai import ChatOpenAI
 
 from src.config import settings, validate
+
+# LangChain types the `parsed` key of with_structured_output(include_raw=True)
+# as None in its internal output model, so Pydantic emits a serializer warning
+# on every successful structured call — several lines of noise per call, for a
+# value that is in fact correct. Suppressed here, at the LangChain boundary.
+# Delete these three lines if you ever suspect a real serialization problem.
+warnings.filterwarnings(
+    "ignore", message="Pydantic serializer warnings", category=UserWarning
+)
 
 
 def get_llm(
