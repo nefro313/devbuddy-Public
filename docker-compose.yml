@@ -1,21 +1,341 @@
-# DevBuddy — Qdrant Vector Database
+# DevBuddy — local stack
 #
-# Starts Qdrant on port 6333 (REST API) and 6334 (gRPC).
-# Dashboard available at http://localhost:6333/dashboard
+#   Weeks 3-6 need one container:
+#       docker compose up -d qdrant
 #
-# Usage:
-#   docker-compose up -d          # start (use 'docker compose' if plugin installed)
-#   docker-compose down           # stop
-#   docker-compose down -v        # stop and delete all data
+#   Week 7 needs the observability stack as well:
+#       docker compose up -d
+#
+# ─────────────────────────────────────────────────────────────
+#  What you get, and what each one answers
+# ─────────────────────────────────────────────────────────────
+#   Qdrant       http://localhost:6333/dashboard   vector store (Week 3)
+#   Prometheus   http://localhost:9090             is the system healthy?
+#   Grafana      http://localhost:3000             ...shown to a human, with alerts
+#   Uptrace      http://localhost:14318            which step was slow?
+#   Langfuse     http://localhost:3001             was the answer any good, and what did it cost?
+#   cAdvisor     http://localhost:8082             per-container CPU, memory, restarts
+#   node-export  http://localhost:9100/metrics     host CPU, load, memory
+#
+#   Logins are seeded so there is no signup step:
+#     Grafana    admin / devbuddy
+#     Uptrace    admin@uptrace.local / devbuddy
+#     Langfuse   devbuddy@local.dev / devbuddy123
+#
+# Every credential in this file is a local-development placeholder. The whole
+# stack binds to localhost and none of it belongs on a reachable machine.
+#
+# Note on container count: self-hosting Langfuse means Postgres + ClickHouse +
+# Redis + MinIO behind it, and Uptrace brings its own Postgres + ClickHouse +
+# Redis. That is the real price of "no data leaves the laptop". Langfuse Cloud
+# would replace six containers with two env vars — see SETUP.md.
+
+name: devbuddy
 
 services:
+  # ═══════════════════════════════════════════════════════════
+  #  Week 3 — vector store
+  # ═══════════════════════════════════════════════════════════
   qdrant:
     image: qdrant/qdrant:latest
+    restart: unless-stopped
     ports:
       - "6333:6333"
       - "6334:6334"
     volumes:
       - qdrant_data:/qdrant/storage
 
+  # ═══════════════════════════════════════════════════════════
+  #  Week 7 — infrastructure layer: Prometheus + Grafana
+  # ═══════════════════════════════════════════════════════════
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./ops/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    # DevBuddy runs on the host, not in a container. This is how the scrape
+    # job reaches host.docker.internal:8001 on Linux; Docker Desktop provides
+    # the name already.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # Container metrics: per-container CPU, memory, network, and restarts.
+  # This is the half of "is the system healthy?" that DevBuddy's own /metrics
+  # cannot answer — an agent that is fine but sitting on a Qdrant container
+  # being OOM-killed looks identical from the application's side.
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    restart: unless-stopped
+    privileged: true
+    ports:
+      - "8082:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      # Mount the socket by its own path, not by mounting /var/run. On macOS
+      # the host's /var/run/docker.sock is a symlink into ~/.docker, so a
+      # /var/run mount arrives without it and cAdvisor reports zero containers
+      # while looking perfectly healthy.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command:
+      - --housekeeping_interval=10s
+      - --docker_only=true
+
+  # Host metrics: CPU, load, memory, disk, filesystem.
+  # On macOS and Windows this reports the Docker Desktop Linux VM rather than
+  # your actual machine — still real numbers, just not the ones Activity
+  # Monitor shows. On Linux it is the host.
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    restart: unless-stopped
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --path.rootfs=/rootfs
+      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)
+
+  grafana:
+    image: grafana/grafana:11.6.0
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: devbuddy
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      # Land on the DevBuddy dashboard instead of an empty home page.
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/devbuddy.json
+    volumes:
+      - ./ops/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./ops/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+  # ═══════════════════════════════════════════════════════════
+  #  Week 7 — application layer: Uptrace (OTLP receiver + UI)
+  # ═══════════════════════════════════════════════════════════
+  uptrace:
+    image: uptrace/uptrace:2.0.3
+    restart: unless-stopped
+    volumes:
+      - ./ops/uptrace/uptrace.yml:/etc/uptrace/config.yml:ro
+    ports:
+      - "14318:80"     # OTLP/HTTP + UI
+      - "14317:4317"   # OTLP/gRPC
+    depends_on:
+      uptrace-clickhouse:
+        condition: service_healthy
+      uptrace-postgres:
+        condition: service_healthy
+      uptrace-redis:
+        condition: service_healthy
+
+  uptrace-clickhouse:
+    image: clickhouse/clickhouse-server:26.3
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_USER: uptrace
+      CLICKHOUSE_PASSWORD: uptrace
+      CLICKHOUSE_DB: uptrace
+    volumes:
+      - uptrace_ch_data:/var/lib/clickhouse
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "localhost:8123/ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  uptrace-postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      PGDATA: /var/lib/postgresql/data/pgdata
+      POSTGRES_USER: uptrace
+      POSTGRES_PASSWORD: uptrace
+      POSTGRES_DB: uptrace
+    volumes:
+      - uptrace_pg_data:/var/lib/postgresql/data/pgdata
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U uptrace -d uptrace"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  uptrace-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  # ═══════════════════════════════════════════════════════════
+  #  Week 7 — model layer: Langfuse
+  # ═══════════════════════════════════════════════════════════
+  langfuse-web:
+    image: langfuse/langfuse:4
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    depends_on: &langfuse-deps
+      langfuse-postgres:
+        condition: service_healthy
+      langfuse-clickhouse:
+        condition: service_healthy
+      langfuse-redis:
+        condition: service_healthy
+      langfuse-minio:
+        condition: service_healthy
+    environment:
+      <<: &langfuse-env
+        DATABASE_URL: postgresql://postgres:postgres@langfuse-postgres:5432/postgres
+        SALT: devbuddy-local-salt
+        # Must be exactly 64 hex characters (256 bits) — generate a real one
+        # with `openssl rand -hex 32`. The quotes are load-bearing: an all-digit
+        # value here is parsed by YAML as the integer 0, reaches the container
+        # as the string "0", and the worker crash-loops on a length check while
+        # every other container reports healthy.
+        ENCRYPTION_KEY: "2a5c5847b12db2349439cc45711811e697b56751a5545d4c96f5721a4e0940ce"
+        TELEMETRY_ENABLED: "false"
+        CLICKHOUSE_MIGRATION_URL: clickhouse://langfuse-clickhouse:9000
+        CLICKHOUSE_URL: http://langfuse-clickhouse:8123
+        CLICKHOUSE_USER: clickhouse
+        CLICKHOUSE_PASSWORD: clickhouse
+        CLICKHOUSE_CLUSTER_ENABLED: "false"
+        LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+        LANGFUSE_S3_EVENT_UPLOAD_REGION: auto
+        LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: minio
+        LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: miniosecret
+        LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://langfuse-minio:9000
+        LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+        LANGFUSE_S3_EVENT_UPLOAD_PREFIX: events/
+        LANGFUSE_S3_MEDIA_UPLOAD_BUCKET: langfuse
+        LANGFUSE_S3_MEDIA_UPLOAD_REGION: auto
+        LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID: minio
+        LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY: miniosecret
+        LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE: "true"
+        LANGFUSE_S3_MEDIA_UPLOAD_PREFIX: media/
+        REDIS_HOST: langfuse-redis
+        REDIS_PORT: 6379
+        REDIS_AUTH: devbuddy-redis
+      NEXTAUTH_URL: http://localhost:3001
+      NEXTAUTH_SECRET: devbuddy-local-nextauth-secret
+      # The browser uploads media straight to MinIO, so this one must be the
+      # host-visible address, not the compose-network one.
+      LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: http://localhost:9095
+      # Headless bootstrap. This is what removes the signup step: the org,
+      # project, user and — crucially — the API keys are created on first boot,
+      # so python/.env can ship with working credentials.
+      LANGFUSE_INIT_ORG_ID: devbuddy
+      LANGFUSE_INIT_ORG_NAME: DevBuddy
+      LANGFUSE_INIT_PROJECT_ID: devbuddy
+      LANGFUSE_INIT_PROJECT_NAME: devbuddy
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: pk-lf-devbuddy-local
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: sk-lf-devbuddy-local
+      LANGFUSE_INIT_USER_EMAIL: devbuddy@local.dev
+      LANGFUSE_INIT_USER_NAME: DevBuddy
+      LANGFUSE_INIT_USER_PASSWORD: devbuddy123
+
+  # Ingestion is asynchronous: the web container accepts the event, the worker
+  # writes it to ClickHouse. If traces appear in the API but not the UI, this
+  # is the container to read logs from.
+  langfuse-worker:
+    image: langfuse/langfuse-worker:4
+    restart: unless-stopped
+    depends_on: *langfuse-deps
+    environment:
+      <<: *langfuse-env
+      LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: http://langfuse-minio:9000
+
+  langfuse-postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - langfuse_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  langfuse-clickhouse:
+    image: clickhouse/clickhouse-server:25.12
+    restart: unless-stopped
+    user: "101:101"
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: clickhouse
+      CLICKHOUSE_PASSWORD: clickhouse
+    volumes:
+      - langfuse_ch_data:/var/lib/clickhouse
+      - langfuse_ch_logs:/var/log/clickhouse-server
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  langfuse-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: >
+      --requirepass devbuddy-redis
+      --maxmemory-policy noeviction
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "devbuddy-redis", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  langfuse-minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    entrypoint: sh
+    # Create the bucket before starting, otherwise the worker's first write fails.
+    command: -c 'mkdir -p /data/langfuse && minio server --address ":9000" --console-address ":9001" /data'
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: miniosecret
+    ports:
+      # 9090 is Prometheus here, so MinIO moves to 9095/9096.
+      - "9095:9000"
+      - "9096:9001"
+    volumes:
+      - langfuse_minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
 volumes:
   qdrant_data:
+  prometheus_data:
+  grafana_data:
+  uptrace_ch_data:
+  uptrace_pg_data:
+  langfuse_pg_data:
+  langfuse_ch_data:
+  langfuse_ch_logs:
+  langfuse_minio_data:

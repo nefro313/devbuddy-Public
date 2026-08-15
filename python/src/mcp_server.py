@@ -177,15 +177,22 @@ def _synthesise(
     schema: type[BaseModel],
     service_name: str | None = None,
     k: int = 8,
-) -> BaseModel:
+) -> tuple[BaseModel, dict]:
     """Retrieve from Qdrant, then have the LLM extract a typed answer.
 
     Two Week-2 guarantees ride along for free: the result is schema-validated,
     and a validator rejection is retried rather than returned as bad JSON.
 
-    Returns the model instance rather than JSON so callers can apply their own
-    filtering before serialising.
+    Returns ``(model_instance, usage)`` rather than JSON so callers can apply
+    their own filtering before serialising.
+
+    Week 7 changed the return type to carry ``usage``. Every tool call here
+    runs its own LLM call, and until this was propagated that spend was
+    invisible to the agent: ``src/agent.py`` showed data steps costing 0
+    tokens while taking seconds, and the dollar figure it printed was a
+    material undercount. A cost you cannot see is a cost you cannot cap.
     """
+    empty_usage = {"prompt_tokens": 0, "completion_tokens": 0, "model": settings.devbuddy_model}
     chunks = retrieve(query, k=k)
 
     if service_name:
@@ -194,15 +201,18 @@ def _synthesise(
             # No document mentions this service. Returning the empty shape is
             # both cheaper and more honest than paying for a call that can only
             # produce a guess.
-            return schema.model_validate(
-                {"service": service_name, "status": "unknown", "evidence": "not in corpus"}
-                if "status" in schema.model_fields
-                else {"service": service_name}
+            return (
+                schema.model_validate(
+                    {"service": service_name, "status": "unknown", "evidence": "not in corpus"}
+                    if "status" in schema.model_fields
+                    else {"service": service_name}
+                ),
+                empty_usage,
             )
 
     context = "\n\n---\n\n".join(chunks)
 
-    result, _ = call_structured(
+    result, stats = call_structured(
         schema,
         [
             SystemMessage(
@@ -220,7 +230,24 @@ def _synthesise(
             HumanMessage(content=f"CONTEXT:\n{context}\n\nRequest: {query}"),
         ],
     )
-    return result
+    return result, {
+        "prompt_tokens": stats.prompt_tokens,
+        "completion_tokens": stats.completion_tokens,
+        "model": stats.model,
+    }
+
+
+def _payload(reading: BaseModel, usage: dict) -> str:
+    """Serialise a reading with its token usage attached.
+
+    ``_usage`` is metadata about producing the answer, not part of the answer,
+    hence the underscore. The Week 6 agent bills it to the same Prometheus
+    counters as its own calls, so the cost of a query is the whole cost of a
+    query.
+    """
+    payload = reading.model_dump(mode="json")
+    payload["_usage"] = usage
+    return json.dumps(payload, default=str)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -234,7 +261,17 @@ def search_docs(query: str, k: int = 5) -> str:
     process — anything not covered by the status, deploy or incident tools.
     """
     chunks = retrieve(query, k=k)
-    return json.dumps({"query": query, "count": len(chunks), "chunks": chunks})
+    # The only tool with no LLM call in it — retrieval is an embedding lookup,
+    # which is local and free. The zeroed `_usage` is reported anyway so the
+    # agent never has to special-case one tool.
+    return json.dumps(
+        {
+            "query": query,
+            "count": len(chunks),
+            "chunks": chunks,
+            "_usage": {"prompt_tokens": 0, "completion_tokens": 0, "model": settings.devbuddy_model},
+        }
+    )
 
 
 @mcp.tool()
@@ -244,12 +281,13 @@ def get_build_status(service_name: str) -> str:
     Use for whether a service is healthy, degraded or broken, and when it last
     deployed. Does not return deployment history or incidents.
     """
-    return _synthesise(
+    reading, usage = _synthesise(
         "Extract the current build and health status for the service.",
         f"{service_name} build status health deploy",
         BuildStatusReading,
         service_name=service_name,
-    ).model_dump_json()
+    )
+    return _payload(reading, usage)
 
 
 @mcp.tool()
@@ -259,13 +297,14 @@ def get_recent_deploys(service_name: str, limit: int = 5) -> str:
     Use for what shipped, who deployed it, and whether a deploy failed or was
     rolled back. Does not return current health.
     """
-    return _synthesise(
+    reading, usage = _synthesise(
         f"Extract up to {limit} of the most recent deployments for the service, "
         "newest first.",
         f"{service_name} deployment log deploy SHA rollback",
         RecentDeploysReading,
         service_name=service_name,
-    ).model_dump_json()
+    )
+    return _payload(reading, usage)
 
 
 @mcp.tool()
@@ -274,7 +313,7 @@ def get_active_incidents(service_name: str) -> str:
 
     An incident whose status is resolved is not active and must be omitted.
     """
-    reading = _synthesise(
+    reading, usage = _synthesise(
         "Extract every incident in the context, recording the service each one "
         "affects and its resolution status exactly as written.",
         f"{service_name} incident severity error code status",

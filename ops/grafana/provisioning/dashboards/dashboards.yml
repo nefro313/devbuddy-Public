@@ -1,0 +1,17 @@
+# DevBuddy — Grafana dashboard provisioning (Week 7)
+#
+# Loads every dashboard JSON in /var/lib/grafana/dashboards on start.
+
+apiVersion: 1
+
+providers:
+  - name: devbuddy
+    orgId: 1
+    folder: DevBuddy
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

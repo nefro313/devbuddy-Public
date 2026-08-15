@@ -791,6 +791,12 @@ agent = [
 mcp = [
     { name = "mcp" },
 ]
+obs = [
+    { name = "langfuse" },
+    { name = "opentelemetry-exporter-otlp-proto-http" },
+    { name = "opentelemetry-sdk" },
+    { name = "prometheus-client" },
+]
 rag = [
     { name = "chromadb" },
     { name = "langchain-community" },
@@ -809,8 +815,12 @@ requires-dist = [
     { name = "langchain-huggingface", marker = "extra == 'rag'", specifier = ">=0.1.0,<1.0.0" },
     { name = "langchain-openai", specifier = ">=0.2.0,<1.0.0" },
     { name = "langchain-qdrant", marker = "extra == 'rag'", specifier = ">=0.2.0,<1.0.0" },
+    { name = "langfuse", marker = "extra == 'obs'", specifier = ">=4.0.0,<5.0.0" },
     { name = "langgraph", marker = "extra == 'agent'", specifier = ">=0.2.0,<1.0.0" },
     { name = "mcp", marker = "extra == 'mcp'", specifier = ">=1.0.0" },
+    { name = "opentelemetry-exporter-otlp-proto-http", marker = "extra == 'obs'", specifier = ">=1.30.0" },
+    { name = "opentelemetry-sdk", marker = "extra == 'obs'", specifier = ">=1.30.0" },
+    { name = "prometheus-client", marker = "extra == 'obs'", specifier = ">=0.21.0" },
     { name = "pydantic", specifier = ">=2.0.0,<3.0.0" },
     { name = "pydantic-settings", specifier = ">=2.15.0" },
     { name = "python-dotenv", specifier = ">=1.0.0,<2.0.0" },
@@ -818,7 +828,7 @@ requires-dist = [
     { name = "rank-bm25", marker = "extra == 'rag'", specifier = ">=0.2.0,<1.0.0" },
     { name = "sentence-transformers", marker = "extra == 'rag'", specifier = ">=3.0.0,<4.0.0" },
 ]
-provides-extras = ["rag", "mcp", "agent"]
+provides-extras = ["rag", "mcp", "agent", "obs"]
 
 [[package]]
 name = "distro"
@@ -1625,6 +1635,25 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/11/43/dcda8fd25f0b19cb2835f2f6bb67f26ad58634f04ac2d8eae00526b0fa55/langchain_text_splitters-0.3.11.tar.gz", hash = "sha256:7a50a04ada9a133bbabb80731df7f6ddac51bc9f1b9cab7fa09304d71d38a6cc", size = 46458, upload-time = "2025-08-31T23:02:58.316Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/58/0d/41a51b40d24ff0384ec4f7ab8dd3dcea8353c05c973836b5e289f1465d4f/langchain_text_splitters-0.3.11-py3-none-any.whl", hash = "sha256:cf079131166a487f1372c8ab5d0bfaa6c0a4291733d9c43a34a16ac9bcd6a393", size = 33845, upload-time = "2025-08-31T23:02:57.195Z" },
+]
+
+[[package]]
+name = "langfuse"
+version = "4.14.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "backoff" },
+    { name = "httpx" },
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-exporter-otlp-proto-http" },
+    { name = "opentelemetry-sdk" },
+    { name = "packaging" },
+    { name = "pydantic" },
+    { name = "wrapt" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/dd/3f/d3387db1f472d2fd4b5de40eb6abedc2f59c9da2224e9d0a79d054a90b81/langfuse-4.14.4.tar.gz", hash = "sha256:48c4bdefc290f61a42881b8048a904ab6b81d37e02496473166836e71ee0ab3a", size = 389680, upload-time = "2026-08-11T17:03:20.472Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d9/1b/a198adc52aa4ffd0886ca0d4e9bb97d45f4f326db206d2395bac67677f5d/langfuse-4.14.4-py3-none-any.whl", hash = "sha256:78692a1d4785a8c255bf6ea967e673e1ee30ce078d646e7b5f7ff44549d45cce", size = 688351, upload-time = "2026-08-11T17:03:21.881Z" },
 ]
 
 [[package]]
@@ -2525,6 +2554,24 @@ wheels = [
 ]
 
 [[package]]
+name = "opentelemetry-exporter-otlp-proto-http"
+version = "1.44.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "googleapis-common-protos" },
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-exporter-otlp-proto-common" },
+    { name = "opentelemetry-proto" },
+    { name = "opentelemetry-sdk" },
+    { name = "requests" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1a/87/95e2a5aaa795b4e2260d74e16df2d5541deb2ea9de010bcd615f4dee2654/opentelemetry_exporter_otlp_proto_http-1.44.0.tar.gz", hash = "sha256:c633d7270ad6b57cd4cfbe8b0007a9e2e7c0cb50bd6c50fe2a7b245f721a09d8", size = 25806, upload-time = "2026-07-16T15:25:39.162Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/cd/d0/fdeb1a98d8d3a6205f5f297c51b4a9bfe65126ab60339669bbe3dd54c2e2/opentelemetry_exporter_otlp_proto_http-1.44.0-py3-none-any.whl", hash = "sha256:838592fce774c1c8bb7b9a0a7facbfa82e17be5a8a4e94cef10cb84ae026bae3", size = 21850, upload-time = "2026-07-16T15:25:20.006Z" },
+]
+
+[[package]]
 name = "opentelemetry-instrumentation"
 version = "0.65b0"
 source = { registry = "https://pypi.org/simple" }
@@ -2863,6 +2910,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/43/34/bcfb02b1dc9db531e7283222b8819b201efd6e0d813bf8f7d2e7872de32d/posthog-7.38.6.tar.gz", hash = "sha256:c12ea1b539d51c03c18e361344355c407be736dc55840f8a92fd454039a9796d", size = 424813, upload-time = "2026-08-12T17:45:40.212Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/28/d6/038615b191ecc9c45244c5364cac4182a4d10f8afff0b9245a66ac61fa0e/posthog-7.38.6-py3-none-any.whl", hash = "sha256:76871eea2070cae6b351b19bc12aea4986efb3e44f1daca090b6a41e841a6b5e", size = 500356, upload-time = "2026-08-12T17:45:38.347Z" },
+]
+
+[[package]]
+name = "prometheus-client"
+version = "0.26.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/52/73/f1334c29c2af4cd9dba6c7817e61b611bd0215e2eb5565c6064a4de18802/prometheus_client-0.26.0.tar.gz", hash = "sha256:04a91bcf94e2cf74a44a1a874d651a2e853ed354b6e822f3b7487751465d5c2b", size = 92910, upload-time = "2026-07-24T19:36:41.893Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/eb/a3/b69efbf4143b5b9859b977770bbbabcc2796b702fa69dc40271e45cd5a56/prometheus_client-0.26.0-py3-none-any.whl", hash = "sha256:fa93d06737aa02bacd05794768508bb97d2fbee28cb3bca04eaae92f0ca953d6", size = 64494, upload-time = "2026-07-24T19:36:40.854Z" },
 ]
 
 [[package]]

@@ -17,6 +17,7 @@ dependencies = [
 #   uv pip install -e ".[rag]"      (Week 3)
 #   uv pip install -e ".[mcp]"      (Week 5)
 #   uv pip install -e ".[agent]"    (Week 6)
+#   uv pip install -e ".[obs]"      (Week 7)
 [project.optional-dependencies]
 rag = [
     "langchain-community>=0.3.0,<1.0.0",
@@ -29,6 +30,23 @@ rag = [
 ]
 mcp = ["mcp>=1.0.0"]
 agent = ["langgraph>=0.2.0,<1.0.0"]
+
+# Week 7 — the production layer.
+#
+# langfuse 3+ is built on OpenTelemetry, which is what lets src/tracing.py hang
+# both exporters off a single TracerProvider and get one trace_id in Uptrace
+# and Langfuse. The v2 SDK had its own transport and could not do that.
+#
+# There is deliberately no `uptrace` package here: Uptrace speaks plain OTLP,
+# so the vendor-neutral exporter is all it takes. Nothing in src/ imports an
+# Uptrace SDK, which is the whole argument for OpenTelemetry — swap the
+# backend by changing UPTRACE_DSN, not by changing code.
+obs = [
+    "langfuse>=4.0.0,<5.0.0",
+    "prometheus-client>=0.21.0",
+    "opentelemetry-sdk>=1.30.0",
+    "opentelemetry-exporter-otlp-proto-http>=1.30.0",
+]
 
 [build-system]
 requires = ["setuptools>=61"]

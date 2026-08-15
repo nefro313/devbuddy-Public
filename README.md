@@ -134,9 +134,12 @@ Full setup guide: [`SETUP.md`](SETUP.md)
 | LLM Provider | OpenRouter (one key, any model) |
 | Framework | LangChain + LangGraph (Python), Spring AI (Java) |
 | Validation | Pydantic (Python), Zod (Node.js), Jakarta Bean Validation (Java) |
-| Vector Store | ChromaDB |
+| Vector Store | Qdrant (`docker compose up -d qdrant`) |
 | Embeddings | sentence-transformers (all-MiniLM-L6-v2) |
 | Evals | Promptfoo |
+| Metrics | Prometheus + Grafana |
+| Traces | OpenTelemetry → Uptrace |
+| LLM traces, cost, scores | Langfuse (self-hosted; Cloud is a 3-line swap) |
 
 ---
 

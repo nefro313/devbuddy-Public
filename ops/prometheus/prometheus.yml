@@ -1,0 +1,51 @@
+# DevBuddy — Prometheus scrape configuration (Week 7)
+#
+# Prometheus PULLS. Nothing in DevBuddy pushes a metric anywhere; the process
+# exposes a plain-text page at :8001/metrics and Prometheus reads it on a timer.
+# That is why a crashed DevBuddy shows up as `up == 0` rather than as silence.
+#
+# DevBuddy runs on the host, not in a container — it is the code you are editing.
+# `host.docker.internal` is how a container reaches the host; the `extra_hosts`
+# entry in docker-compose.yml makes that name resolve on Linux too.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    stack: devbuddy
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+scrape_configs:
+  # The DevBuddy agent process, via src/cost_tracker.py's metrics server.
+  - job_name: devbuddy
+    static_configs:
+      - targets: ["host.docker.internal:8001"]
+        labels:
+          service: devbuddy
+
+  # ── Infrastructure ────────────────────────────────────────────
+  # The other half of "is the system healthy?". DevBuddy's own metrics say
+  # nothing about the containers underneath it, and "the agent is fine but
+  # Qdrant is being OOM-killed" is a real Friday afternoon.
+  - job_name: cadvisor
+    static_configs:
+      - targets: ["cadvisor:8080"]
+    metric_relabel_configs:
+      # cAdvisor emits a very large number of series per container. Keep the
+      # ones the dashboard uses and drop the rest — otherwise a laptop
+      # Prometheus spends more memory on container metrics than on DevBuddy.
+      - source_labels: [__name__]
+        regex: "container_(cpu_usage_seconds_total|memory_working_set_bytes|network_(receive|transmit)_bytes_total|start_time_seconds|last_seen)"
+        action: keep
+
+  - job_name: node
+    static_configs:
+      - targets: ["node-exporter:9100"]
+
+  # Prometheus scrapes itself — the cheapest way to prove the pipeline works
+  # before any DevBuddy metric exists.
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]

@@ -1,0 +1,21 @@
+# DevBuddy — Grafana datasource provisioning (Week 7)
+#
+# Provisioned as a file so the dashboard works on a fresh `docker compose up`.
+# Clicking through "Add data source" in the UI would leave the next person on
+# the cohort staring at an empty panel.
+
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    # Pinned, because ops/grafana/dashboards/devbuddy.json references this uid.
+    # Let Grafana generate one and the provisioned dashboard loads with every
+    # panel reading "Datasource not found".
+    uid: devbuddy-prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+    jsonData:
+      timeInterval: 15s

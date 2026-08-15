@@ -1,0 +1,79 @@
+# DevBuddy — Alert rules (Week 7)
+#
+# An alert rule is a PromQL expression that is expected to stay false. These
+# four are the deck's four golden signals, with the two that only exist because
+# there is a model in the system: token burn and dollars per hour.
+#
+# The cost rule is the one worth arguing about. It fires on *burn rate*, not on
+# accumulated spend — a runaway agent loop reaches $6k/month at 03:00 and a
+# monthly-total alert notices in November. Rate catches it in five minutes.
+
+groups:
+  - name: devbuddy
+    interval: 15s
+    rules:
+      # ── Recording rules ────────────────────────────────────────
+      # Computed once here rather than in six dashboard panels.
+      - record: devbuddy:request_latency_p95
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le) (rate(devbuddy_request_latency_seconds_bucket{step="total"}[5m]))
+          )
+
+      - record: devbuddy:cost_usd_per_hour
+        expr: sum(rate(devbuddy_llm_cost_usd_total[5m])) * 3600
+
+      - record: devbuddy:error_ratio
+        expr: |
+          sum(rate(devbuddy_requests_total{status="error"}[5m]))
+          /
+          clamp_min(sum(rate(devbuddy_requests_total[5m])), 0.001)
+
+      # ── Alerts ─────────────────────────────────────────────────
+      - alert: DevBuddyDown
+        expr: up{job="devbuddy"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "DevBuddy is not exposing metrics"
+          description: "Prometheus cannot scrape host.docker.internal:8001. The agent process is down, or it was started without the metrics server."
+
+      - alert: DevBuddyLatencyHigh
+        expr: devbuddy:request_latency_p95 > 12
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p95 latency is {{ $value | printf \"%.1f\" }}s (> 12s)"
+          description: "Open the Uptrace waterfall for a slow trace. p95 alone cannot tell you which of the seven steps is responsible."
+
+      - alert: DevBuddyErrorRateHigh
+        expr: devbuddy:error_ratio > 0.02
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Error ratio is {{ $value | printf \"%.2%\" }} (> 2%)"
+          description: "Check devbuddy_tool_errors_total by tool, and the schema-validation retries in Langfuse."
+
+      # The kill-switch alert. DEVBUDDY_MAX_COST guards a single run; this
+      # guards the fleet — many individually-cheap runs still add up.
+      - alert: DevBuddyCostBurnHigh
+        expr: devbuddy:cost_usd_per_hour > 1.0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Burning ${{ $value | printf \"%.2f\" }}/hour"
+          description: "Sustained for a month this is ${{ $value | printf \"%.0f\" }} x 720. Check for an agent loop re-sending its history, or a RAG top-k left at 10."
+
+      - alert: DevBuddyGuardrailBlockSpike
+        expr: sum(rate(devbuddy_guardrail_blocks_total[5m])) * 60 > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Guardrails blocking {{ $value | printf \"%.1f\" }} requests/min"
+          description: "Either you are under a prompt-injection attempt, or a guardrail rule is too tight and is refusing legitimate questions. The Langfuse scores tell you which."

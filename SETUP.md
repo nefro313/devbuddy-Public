@@ -84,6 +84,7 @@ Later weeks pull heavier libraries. Install them only when you reach that week:
 uv pip install -e ".[rag]"       # Week 3 (RAG: chromadb, embeddings, ...)
 uv pip install -e ".[mcp]"       # Week 5 (MCP)
 uv pip install -e ".[agent]"     # Week 6 (Agent: langgraph)
+uv pip install -e ".[obs]"       # Week 7 (LLMOps: langfuse, otel, prometheus)
 ```
 
 <details>
@@ -165,6 +166,64 @@ Available now: `week-01` through `week-06` (Week 6 = Agentic Workflows is the la
 
 ---
 
+## Week 7 — The Observability Stack
+
+Everything runs locally from the repo root. No accounts, no keys beyond the OpenRouter one you already have.
+
+```bash
+docker compose up -d
+```
+
+That brings up fifteen containers. Five of them you actually look at:
+
+| | URL | Login | Answers |
+|---|---|---|---|
+| **Prometheus** | http://localhost:9090 | — | Is the system healthy? |
+| **Grafana** | http://localhost:3000 | `admin` / `devbuddy` | ...shown to a human, with alerts |
+| **Uptrace** | http://localhost:14318 | `admin@uptrace.local` / `devbuddy` | Which step was slow? |
+| **Langfuse** | http://localhost:3001 | `devbuddy@local.dev` / `devbuddy123` | Was the answer good, what did it cost? |
+| **Qdrant** | http://localhost:6333/dashboard | — | The Week 3 vector store |
+
+Two more feed Prometheus the infrastructure half of the picture, which DevBuddy's own `/metrics` cannot see: **cAdvisor** (`:8082`) for per-container CPU, memory and restarts, and **node-exporter** (`:9100`) for host CPU, load and memory. On macOS and Windows, node-exporter reports the Docker Desktop VM rather than your actual machine.
+
+The remaining eight are storage that Langfuse and Uptrace need (Postgres, ClickHouse, Redis, MinIO — one set each). You will never open them.
+
+Weeks 1–6 only need Qdrant, so if the full stack is too heavy:
+
+```bash
+docker compose up -d qdrant
+```
+
+### Then run it
+
+```bash
+cd python && uv run python src/mcp_server.py
+```
+
+```bash
+cd python && uv run python src/agent.py
+```
+
+The agent starts its own metrics server on `:8001`, which is what Prometheus scrapes. Confirm the target is `UP` at http://localhost:9090/targets — if DevBuddy is not running, that target is legitimately down.
+
+### The one thing to actually look at
+
+Run a query, take the `trace_id` the agent prints, and find it in **both** Uptrace and Langfuse. Same id, two different views of one request: the waterfall that shows which step burned the seconds, and the prompts that show whether the answer was any good. That link is the whole point of the week.
+
+### Self-hosted vs Langfuse Cloud
+
+Self-hosting Langfuse costs six containers (Postgres, ClickHouse, Redis, MinIO, web, worker). That is the real price of "no data leaves the laptop". To swap it for the managed service, create a project at [cloud.langfuse.com](https://cloud.langfuse.com) and put three lines in `python/.env`:
+
+```
+LANGFUSE_HOST=https://cloud.langfuse.com
+LANGFUSE_PUBLIC_KEY=pk-lf-...
+LANGFUSE_SECRET_KEY=sk-lf-...
+```
+
+Then `docker compose up -d` everything except the `langfuse-*` services. No code changes — `src/tracing.py` only reads settings.
+
+---
+
 ## Troubleshooting
 
 | Problem | Fix |
@@ -176,6 +235,13 @@ Available now: `week-01` through `week-06` (Week 6 = Agentic Workflows is the la
 | `ModuleNotFoundError: src` | Run from the `python/` directory: `cd python && python run.py`. |
 | `python: command not found` | Use `python3` (e.g. `python3 install.py`). |
 | Verification script times out | Check your network. OpenRouter may be rate-limited on shared keys. |
+| Prometheus target `devbuddy` is DOWN | Nothing is running. The metrics server lives in the DevBuddy process — start `src/agent.py` and it appears. |
+| Grafana panels empty right after a run | Prometheus *pulls* every 15s, and `src/agent.py` only lives ~90s — the last counter values are never scraped, and instant queries go stale 5 minutes after the process exits. Use `max_over_time(devbuddy_requests_total[30m])`, or keep a process running. Traces in Uptrace and Langfuse are pushed, so they are always complete. |
+| `langfuse-worker` restarting, everything else healthy | `ENCRYPTION_KEY` must be exactly 64 hex characters, and **quoted** in the compose file. An all-digit value is parsed by YAML as the integer `0`. Regenerate with `openssl rand -hex 32`. |
+| Traces in Uptrace but not Langfuse | Check `langfuse-worker` logs. Ingestion is asynchronous: web accepts the event, the worker writes it. |
+| No spans anywhere, script exits fine | The exporters batch. Call `tracing.flush()` before a short-lived process exits — `src/agent.py` already does. |
+| Port already in use on 3000/9090/5432/6379 | Something else is running. Ports are set in `docker-compose.yml`; the databases deliberately publish nothing. |
+| Guardrail blocks a legitimate question | Lower the aggressiveness or set `GUARDRAILS_ENABLED=false` in `.env` to compare. A false positive is a real cost — see the `off_topic` classifier prompt. |
 | Anything else | Post in `#devbuddy-series`. Don't DM — public debugging builds shared knowledge. |
 
 ---

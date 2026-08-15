@@ -1,0 +1,120 @@
+# DevBuddy — Uptrace configuration (Week 7)
+#
+# Uptrace is the application layer: OTLP in, span waterfalls out. It answers
+# "which of the seven steps burned the 9 seconds", which no Prometheus metric
+# can, because a metric is an aggregate and this question is about one request.
+#
+# Everything below is seeded so that `docker compose up -d` gives a working
+# project with no signup. These credentials are local-only by design — this
+# file has no business on a machine that is reachable from anywhere else.
+
+service:
+  env: hosted
+  secret: devbuddy-local-secret-change-me
+
+site:
+  url: http://localhost:14318
+  ingest_url: http://localhost:14318?grpc=14317
+
+listen:
+  http:
+    addr: :80
+  grpc:
+    addr: :4317
+
+# ─────────────────────────────────────────────────────────────
+#  Bootstrap: one org, one project, one login. Created on first
+#  start only. The project token is the credential DevBuddy sends
+#  in the `uptrace-dsn` header — see src/tracing.py.
+# ─────────────────────────────────────────────────────────────
+seed_data:
+  update: true
+  delete: false
+
+  users:
+    - key: user1
+      name: DevBuddy
+      email: admin@uptrace.local
+      password: devbuddy
+      email_confirmed: true
+
+  user_tokens:
+    - key: user_token1
+      user_key: user1
+      token: devbuddy_user_token
+
+  orgs:
+    - key: org1
+      name: DevBuddy
+
+  org_users:
+    - key: org_user1
+      org_key: org1
+      user_key: user1
+      role: owner
+
+  projects:
+    - key: project1
+      name: devbuddy
+      org_key: org1
+
+  project_tokens:
+    - key: project_token1
+      project_key: project1
+      token: devbuddy_project_token
+
+  project_users:
+    - key: project_user1
+      project_key: project1
+      org_user_key: org_user1
+      perm_level: admin
+
+# ─────────────────────────────────────────────────────────────
+#  Storage. ClickHouse holds the spans; Postgres holds everything
+#  about the app itself (users, dashboards, alert rules).
+# ─────────────────────────────────────────────────────────────
+ch_cluster:
+  cluster: uptrace1
+  replicated: false
+  distributed: false
+  shards:
+    - replicas:
+        - addr: uptrace-clickhouse:9000
+          database: uptrace
+          user: uptrace
+          password: uptrace
+          dial_timeout: 3s
+          write_timeout: 5s
+          max_retries: 3
+          max_execution_time: 15s
+
+ch_schema:
+  compression: ZSTD(1)
+  spans_index: { storage_policy: default }
+  spans_data: { storage_policy: default }
+  span_links: { storage_policy: default }
+  logs_index: { storage_policy: default }
+  logs_data: { storage_policy: default }
+  events_index: { storage_policy: default }
+  events_data: { storage_policy: default }
+  metrics: { storage_policy: default }
+
+pg:
+  addr: uptrace-postgres:5432
+  user: uptrace
+  password: uptrace
+  database: uptrace
+
+redis_cache:
+  addrs:
+    1: uptrace-redis:6379
+  username: ""
+  password: ""
+  db: 0
+
+certmagic:
+  enabled: false
+
+mailer:
+  smtp:
+    enabled: false

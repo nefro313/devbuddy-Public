@@ -63,9 +63,49 @@ class Settings(BaseSettings):
     max_steps: int = 10
     max_cost: float = 2.00
 
+    # ─── Week 7 — Observability ──────────────────────────────────
+    # Three layers, three destinations, one trace_id. See src/tracing.py.
+    #
+    # Every one of these degrades to a no-op rather than raising: a missing
+    # Langfuse container must not stop the agent from answering. Observability
+    # that can take the system down with it is a liability, not a safety net.
+
+    # Prometheus scrapes this. The port is exposed by src/cost_tracker.py.
+    metrics_enabled: bool = True
+    metrics_port: int = 8001
+
+    # OpenTelemetry → Uptrace. The DSN is the credential; it goes in the
+    # `uptrace-dsn` header on every OTLP request. Project 1 / token as seeded
+    # in ops/uptrace/uptrace.yml.
+    tracing_enabled: bool = True
+    otel_service_name: str = "devbuddy"
+    otel_environment: str = "local"
+    uptrace_dsn: str = "http://devbuddy_project_token@localhost:14318/1"
+
+    # Langfuse. These defaults are the keys docker-compose.yml seeds via
+    # LANGFUSE_INIT_*, so the local stack works with no signup. Point
+    # langfuse_host at cloud.langfuse.com and override both keys to use the
+    # managed service instead.
+    langfuse_enabled: bool = True
+    langfuse_public_key: str = "pk-lf-devbuddy-local"
+    langfuse_secret_key: str = "sk-lf-devbuddy-local"
+    langfuse_host: str = "http://localhost:3001"
+
+    # ─── Week 7 — Guardrails ─────────────────────────────────────
+    guardrails_enabled: bool = True
+    # Length alone is not a security control, but an unbounded query is a
+    # billing control: context is what you pay for.
+    max_query_chars: int = 2000
+    # The output guardrail asks a model whether the report is supported by the
+    # evidence. Below this it refuses to pass the report through.
+    min_grounding_score: float = 0.5
+
     # ─── Cost model (USD per 1M tokens) ──────────────────────────
     # Matches gpt-4o-mini. Change both if you change devbuddy_model, otherwise
     # the cost numbers printed by every week are quietly wrong.
+    #
+    # Week 7 note: src/cost_tracker.py carries a per-model price table and
+    # falls back to these two numbers for any model it does not know.
     price_input_per_m: float = 0.15
     price_output_per_m: float = 0.60
 
@@ -79,6 +119,22 @@ class Settings(BaseSettings):
         """The endpoint the Week 6 agent connects to, for the active transport."""
         path = "/sse" if self.mcp_transport == "sse" else "/mcp"
         return f"http://{self.mcp_host}:{self.mcp_port}{path}"
+
+    @property
+    def uptrace_endpoint(self) -> str:
+        """The OTLP/HTTP base URL, parsed out of the DSN.
+
+        A DSN is ``http://<token>@<host>:<port>/<project_id>``. The token is
+        auth and travels in a header; the exporter needs only the origin, so
+        one setting yields both rather than asking for the host twice.
+        """
+        from urllib.parse import urlparse
+
+        parsed = urlparse(self.uptrace_dsn)
+        if not parsed.hostname:
+            return ""
+        port = f":{parsed.port}" if parsed.port else ""
+        return f"{parsed.scheme}://{parsed.hostname}{port}"
 
     def cost_of(self, prompt_tokens: int, completion_tokens: int) -> float:
         """USD cost of one call. The single place this arithmetic lives."""
@@ -97,6 +153,16 @@ def _propagate_to_environ(s: Settings) -> None:
         os.environ.setdefault("OPENROUTER_API_KEY", s.openrouter_api_key)
     # sentence-transformers/transformers chatter on every import otherwise.
     os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+
+    # Week 7: the Langfuse SDK reads these three from the environment when
+    # get_client() is called with no arguments. Propagating them here means
+    # src/tracing.py never has to pass credentials around by hand.
+    if s.langfuse_public_key:
+        os.environ.setdefault("LANGFUSE_PUBLIC_KEY", s.langfuse_public_key)
+    if s.langfuse_secret_key:
+        os.environ.setdefault("LANGFUSE_SECRET_KEY", s.langfuse_secret_key)
+    if s.langfuse_host:
+        os.environ.setdefault("LANGFUSE_HOST", s.langfuse_host)
 
 
 @lru_cache
@@ -136,3 +202,12 @@ if __name__ == "__main__":
     print(f"  corpus         {settings.data_dir} ({'found' if settings.data_dir.is_dir() else 'MISSING'})")
     print(f"  mcp            {settings.mcp_url}  ({settings.mcp_transport})")
     print(f"  guards         max_steps={settings.max_steps} max_cost=${settings.max_cost:.2f}")
+    print("  ── week 7 ──")
+    print(f"  metrics        :{settings.metrics_port}/metrics "
+          f"({'on' if settings.metrics_enabled else 'off'})")
+    print(f"  uptrace        {settings.uptrace_endpoint} "
+          f"({'on' if settings.tracing_enabled else 'off'})")
+    print(f"  langfuse       {settings.langfuse_host} "
+          f"({'on' if settings.langfuse_enabled else 'off'})")
+    print(f"  guardrails     {'on' if settings.guardrails_enabled else 'off'}  "
+          f"max_query_chars={settings.max_query_chars}")
