@@ -1,5 +1,6 @@
 package devbuddy.config;
 
+import devbuddy.service.SchemasService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
@@ -85,16 +86,24 @@ public class AppConfig {
         return ChatClient.builder(chatModel).build();
     }
 
+    /** Week 2 — structured output functions (analyzePr + generateReadinessReport). */
+    @Bean
+    public SchemasService schemasService(ChatClient chatClient) {
+        return new SchemasService(chatClient, model);
+    }
+
     /** Exposed as a named bean so other components can reference the model name. */
     @Bean
     public String modelName() {
         return model;
     }
 
-    /** Optional alternate model for provider swap tests. */
+    /** Optional alternate model for provider swap tests. Empty string when unset
+     *  (returning null would register a Spring {@code NullBean}, which breaks
+     *  {@code ctx.getBean("modelAlt", String.class)} lookups). */
     @Bean
     public String modelAlt() {
-        return modelAlt;
+        return modelAlt == null ? "" : modelAlt;
     }
 
     /** Exposed for tests that need to create a second client for model swap. */

@@ -1,8 +1,28 @@
+# DevBuddy - Python dependencies (Week 0 core)
+#
+# Kept intentionally small so the first install is fast. Later weeks add their
+# own libraries; install them only when you reach that week (see the groups
+# below, or use uv extras: `uv pip install -e ".[rag]"`).
+#
+# Recommended: use uv (see SETUP.md). Fallback: pip install -r requirements.txt
+
+# --- Week 0 core ------------------------------------------------
 langchain>=0.3.0,<1.0.0
 langchain-openai>=0.2.0,<1.0.0
-langgraph>=0.2.0,<1.0.0
 pydantic>=2.0.0,<3.0.0
-chromadb>=0.5.0,<1.0.0
-sentence-transformers>=3.0.0,<4.0.0
-mcp>=1.0.0
 python-dotenv>=1.0.0,<2.0.0
+
+# --- Week 3 (RAG) - install when you reach Week 3 ---------------
+# langchain-community>=0.3.0,<1.0.0
+# langchain-huggingface>=0.1.0,<1.0.0
+# langchain-qdrant>=0.2.0,<1.0.0
+# qdrant-client>=1.12.0,<2.0.0
+# chromadb>=0.5.0,<1.0.0
+# sentence-transformers>=3.0.0,<4.0.0
+# rank-bm25>=0.2.0,<1.0.0
+
+# --- Week 5 (MCP) ----------------------------------------------
+# mcp>=1.0.0
+
+# --- Week 6 (Agent) --------------------------------------------
+# langgraph>=0.2.0,<1.0.0

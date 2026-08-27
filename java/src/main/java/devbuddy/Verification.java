@@ -1,10 +1,11 @@
 package devbuddy;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import devbuddy.config.AppConfig;
 import devbuddy.cost.CostTracker;
-import devbuddy.schemas.BuildCheck;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
@@ -33,6 +34,43 @@ import java.time.format.DateTimeFormatter;
  * }</pre></p>
  */
 public class Verification {
+
+    /**
+     * Week 0 build-status check schema — defined inline, exactly like Python's
+     * {@code verification.py} and Node.js's {@code verification.js}.
+     * (Distinct from {@code devbuddy.schemas.BuildCheck}, the Week 2 PR schema.)
+     */
+    public record BuildCheck(
+            String project,
+            Status status,
+            double confidence,
+            String explanation
+    ) {
+        public enum Status {
+            PASSING("passing"), FAILING("failing"), IN_PROGRESS("in_progress"), UNKNOWN("unknown");
+
+            private final String value;
+
+            Status(String value) {
+                this.value = value;
+            }
+
+            @JsonValue
+            public String value() {
+                return value;
+            }
+
+            @JsonCreator
+            public static Status fromValue(String v) {
+                for (Status s : values()) {
+                    if (s.value.equalsIgnoreCase(v)) {
+                        return s;
+                    }
+                }
+                throw new IllegalArgumentException("Invalid build status: " + v);
+            }
+        }
+    }
 
     private static final Logger log = LoggerFactory.getLogger(Verification.class);
 

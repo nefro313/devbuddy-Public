@@ -1,203 +1,191 @@
 # DevBuddy — Setup Guide (Node.js)
 
-Follow these steps to get DevBuddy running on your machine.
+This is the working setup for the current repo state. Use it from the repo root or from the `nodejs/` folder as shown below.
 
 ---
 
 ## Prerequisites
 
-- **Node.js 20 or later** (`node --version`)
-- **npm** (comes with Node.js) or **pnpm**
-- **Git**
-- An OpenRouter API key (check `#devbuddy-series` or contact the ops team)
+- Node.js (LTS recommended)
+- npm
+- Git
+- An OpenRouter API key
+
+> For the Week 2 demos, use `openai/gpt-4o-mini` in `.env`. Free OpenRouter models may work for a smoke check, but they often fail strict structured-output demos.
 
 ---
 
-## Step 1: Fork the Repository
+## 1) Confirm you are in the repo
 
 ```bash
-# Via GitHub CLI
-gh repo fork org/devbuddy --clone
-
-# Or via GitHub UI: click Fork → Clone your fork
-git clone https://github.com/YOUR_USERNAME/devbuddy.git
-cd devbuddy
+cd /path/to/devbuddy
+git checkout week-02
+git status
 ```
 
 ---
 
-## Step 2: Add Upstream Remote
-
-```bash
-git remote add upstream https://github.com/org/devbuddy.git
-```
-
-Each week you'll run `git pull upstream main` to get the latest docs and data.
-
----
-
-## Step 3: Install Dependencies
+## 2) Install dependencies
 
 ```bash
 cd nodejs
 npm install
 ```
 
-This installs all packages listed in `package.json`:
-- `@langchain/openai` — OpenRouter LLM calls
-- `@langchain/core` — messages, callbacks, runnable interface
-- `@langchain/langgraph` — agent orchestration (Week 6)
-- `zod` — typed schema validation
-- `chromadb` — vector store (Week 3)
-- `@xenova/transformers` — local embeddings (Week 3)
-- `@modelcontextprotocol/sdk` — MCP server/client (Week 5)
-- `dotenv` — environment variable loading
-
 ---
 
-## Step 4: Configure Your API Key
+## 3) Configure the environment
 
 ```bash
+cd nodejs
 cp .env.example .env
 ```
 
-Edit `.env` and add your OpenRouter API key:
+Windows PowerShell:
 
-```
-OPENROUTER_API_KEY=sk-or-your-actual-key
+```powershell
+cd nodejs
+Copy-Item .env.example .env
 ```
 
-**Never commit `.env` to git.** It's in `.gitignore`.
+Then edit `.env` and make sure it contains:
+
+```bash
+OPENROUTER_API_KEY=sk-or-your-key
+DEVBUDDY_MODEL=openai/gpt-4o-mini
+```
+
+This repo already includes a `.env` in `nodejs/`, so if it exists, just confirm the values are correct instead of replacing it blindly.
 
 ---
 
-## Step 5: Run the Verification Script
+## 4) Run the verification script
 
 ```bash
+cd nodejs
 npm run verify
 ```
 
-Or directly:
+Expected result:
+
+- `VERIFICATION PASSED`
+- token count and cost printed
+- typed object output, not a raw string
+
+---
+
+## 5) Run the Week 2 demos
 
 ```bash
-node src/verification.js
-```
-
-You should see output like:
-
-```
-============================================================
-  DevBuddy Verification — Week 0 (Node.js)
-============================================================
-
-[1/3] Checking: auth-service...
-  Status:      passing
-  Confidence:  30%
-  Reason:      I don't have real CI access...
-  Tokens:      147 (102 in / 45 out)
-  Cost:        $0.000042
-  Time:        1.23s
-  Type:        Object ← typed object, not a string!
-
-[2/3] Checking: api-gateway...
-  ...
-
-============================================================
-  ✅ VERIFICATION PASSED
-  Runtime:    Node.js v22.5.0
-  Model:      openai/gpt-4o-mini
-  Total tokens: 441
-  Total cost:   $0.000126
-  Date:       2026-07-02T10:30:00.000Z
-============================================================
+cd nodejs
+node scripts/week-02/demo-01-prose-vs-structured.js
+node scripts/week-02/demo-02-raw-vs-zod.js
+node scripts/week-02/demo-03-inference-parameters.js
+node scripts/week-02/demo-04-sketchpad.js
+node scripts/week-02/demo-05-agentic-retry.js
+node scripts/week-02/demo-06-prompt-engineering.js
+node scripts/week-02/explore-readiness-report.js
 ```
 
 ---
 
-## Step 6: Post to the Channel
+## 6) Run schema-only tests
 
-Copy your terminal output and post it to `#devbuddy-series` with one sentence:
+```bash
+cd nodejs
+npx vitest run tests/test_schemas.js -t "ServiceReadinessReport|BuildCheck"
+```
 
-> *"I want DevBuddy to help me with _____."*
+---
+
+## 7) Promptfoo evaluation
+
+This is the correct way to load the repo env and then run the eval:
+
+```bash
+cd /path/to/devbuddy
+set -a
+source nodejs/.env
+set +a
+npx promptfoo@latest eval --config shared/evals/week-02-prompt-variants.yaml
+```
+
+Windows PowerShell:
+
+```powershell
+cd C:\path\to\devbuddy
+Get-Content .\nodejs\.env | ForEach-Object {
+	if ($_ -match '^\s*#' -or $_ -notmatch '=') { return }
+	$name, $value = $_ -split '=', 2
+	Set-Item -Path Env:$name -Value $value
+}
+npx promptfoo@latest eval --config shared/evals/week-02-prompt-variants.yaml
+```
+
+Do not rely on the CLI alone unless the API key is already exported in the terminal environment.
 
 ---
 
 ## Troubleshooting
 
-| Problem | Fix |
-|---------|-----|
-| `OPENROUTER_API_KEY not set` | Did you copy `.env.example` to `.env`? Did you add your key? Are you running from the `nodejs/` directory? |
-| `Error [ERR_MODULE_NOT_FOUND]: Cannot find package '@langchain/openai'` | Run `npm install` from the `nodejs/` directory |
-| `Error: Cannot find module './llm.js'` | You must run from the `nodejs/` directory: `cd nodejs && node src/verification.js` |
-| `node: command not found` | Install Node.js 20+ from [nodejs.org](https://nodejs.org) or via `nvm` |
-| `unsupported Node.js version` | Check `node --version`. Must be 20+. Use `nvm install 22` if needed. |
-| `Cannot find module 'dotenv/config'` | Run `npm install` — the `dotenv` package may not be installed |
-| Verification script times out | Check your network. OpenRouter may be rate-limited on shared keys. |
-| `SyntaxError: Cannot use import statement outside a module` | Make sure `package.json` has `"type": "module"`. It should be there by default. |
-| `fetch failed` / `ECONNREFUSED` | Check your network / proxy settings. OpenRouter base URL may be blocked by corporate firewall. |
-| Anything else | Post in `#devbuddy-series`. Don't DM — public debugging builds shared knowledge. |
+### `OPENROUTER_API_KEY not set`
 
----
-
-## Project Structure
-
-```
-nodejs/
-├── src/
-│   ├── llm.js           # OpenRouter client factory (Week 1)
-│   ├── verification.js   # Verification script — run this first!
-│   ├── schemas.js        # Zod schemas + structured output (Week 2)
-│   ├── rag.js            # RAG pipeline (Week 3)
-│   ├── tools.js          # Tool definitions (Week 4)
-│   ├── mcp_server.js     # MCP server (Week 5)
-│   ├── agent.js          # Agent orchestrator (Week 6)
-│   ├── guardrails.js     # Input/output guardrails (Week 7)
-│   ├── cost_tracker.js   # Cost tracking (Week 7)
-│   └── tracing.js        # Tracing + observability (Week 7)
-├── node_modules/         # Dependencies (git-ignored)
-├── package.json          # Project config + scripts + dependencies
-├── package-lock.json     # Locked dependency versions
-└── .env                  # Your API key (git-ignored)
-```
-
----
-
-## Scripts
-
-| Command | What it does |
-|---------|-------------|
-| `npm run verify` | Run the Week 0 verification script |
-| `npm test` | Run the test suite (available from Week 2) |
-| `npm run test:watch` | Run tests in watch mode |
-
----
-
-## Keyboard Shortcuts
-
-None yet — but as packages are added, shortcuts will be documented here.
-
----
-
-## What's Next
-
-- Week 1 is the kick-off session. You'll see the full DevBuddy architecture.
-- The verification script you just ran is a microcosm of what DevBuddy becomes.
-- Each week: `cd nodejs && git pull upstream main`, read `../docs/week-NN.md`, build in `src/`.
-
----
-
-## Switching Between Languages
-
-If you're using both Python and Node.js:
+- Confirm the `.env` file is inside `nodejs/`
+- Ensure the variable is exported in the shell
+- Linux/macOS:
 
 ```bash
-# Python
-cd python
-source .venv/bin/activate
-
-# Node.js
-cd nodejs
-# (no venv needed — node_modules is local)
+cd /path/to/devbuddy
+set -a
+source nodejs/.env
+set +a
 ```
 
-The architectures and patterns are identical. The language is just syntax.
+- PowerShell:
+
+```powershell
+cd C:\path\to\devbuddy
+Get-Content .\nodejs\.env | ForEach-Object {
+	if ($_ -match '^\s*#' -or $_ -notmatch '=') { return }
+	$name, $value = $_ -split '=', 2
+	Set-Item -Path Env:$name -Value $value
+}
+```
+
+### `ERR_MODULE_NOT_FOUND`
+
+```bash
+cd nodejs
+npm install
+```
+
+### Model issues
+
+Use this model for the Week 2 main demos:
+
+```bash
+DEVBUDDY_MODEL=openai/gpt-4o-mini
+```
+
+Free models are fine for quick smoke tests only.
+
+### Java / Maven mismatch
+
+This is not a Node issue, but if you are switching between folders and seeing Java errors, check:
+
+```bash
+java -version
+mvn -version
+```
+
+---
+
+## Verified in this repo
+
+We ran:
+
+```bash
+cd /home/nabarup_maity/devbuddy/nodejs && npm run verify | head -n 200
+```
+
+and it passed with `VERIFICATION PASSED` in the current environment.

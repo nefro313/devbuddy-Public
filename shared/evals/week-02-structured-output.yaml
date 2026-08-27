@@ -1,0 +1,84 @@
+# Week 2 — Structured Output Eval
+#
+# Tests schema adherence, field validation, and severity classification.
+# Run: npx promptfoo@latest eval --config week-02-structured-output.yaml
+#
+# Prerequisites:
+#   export OPENROUTER_API_KEY=sk-or-your-key
+
+description: "Week 2 — Structured output: schema adherence, severity classification"
+
+providers:
+  - id: openrouter:openai/gpt-4o-mini
+    label: gpt-4o-mini
+    config:
+      temperature: 0
+
+prompts:
+  - |-
+    You are a code reviewer. Analyze the given PR and return a BuildCheck object.
+    - severity: 'critical' for auth/payments/security changes. 'high' for core logic.
+      'medium' for feature work. 'low' for docs/typos.
+    - summary: one sentence describing what changed and why.
+    - affected_files: list the files mentioned in the diff.
+    - project: extract the project or service name.
+
+    Return ONLY valid JSON with these exact fields:
+    {"project": "...", "severity": "...", "summary": "...", "affected_files": [...]}
+
+    PR Title: {{title}}
+    Diff: {{diff}}
+
+tests:
+  # Test 1: Auth change → should be critical
+  - vars:
+      title: "Fix login redirect loop in auth-service"
+      diff: |
+        Changed session token validation in auth.py.
+        Expired tokens now return 401 instead of infinite redirect.
+        Files: src/auth.py, tests/test_auth.py
+    assert:
+      - type: contains-json
+      - type: javascript
+        value: "JSON.parse(output).severity === 'critical' || JSON.parse(output).severity === 'high'"
+      - type: javascript
+        value: "JSON.parse(output).affected_files.includes('auth.py') || JSON.parse(output).affected_files.includes('src/auth.py')"
+
+  # Test 2: Docs change → should be low
+  - vars:
+      title: "Update README with setup instructions"
+      diff: |
+        Added Python 3.11+ requirement to README.
+        Files: README.md
+    assert:
+      - type: contains-json
+      - type: javascript
+        value: "JSON.parse(output).severity === 'low'"
+      - type: javascript
+        value: "JSON.parse(output).project.length > 0"
+
+  # Test 3: Payment change → should be critical
+  - vars:
+      title: "Increase payment processing timeout"
+      diff: |
+        Payment API timeout increased from 30s to 60s.
+        Files: payment-api/config.py, payment-api/handler.py
+    assert:
+      - type: contains-json
+      - type: javascript
+        value: "['critical', 'high'].includes(JSON.parse(output).severity)"
+      - type: javascript
+        value: "JSON.parse(output).summary.length > 10"
+
+  # Test 4: All required fields present
+  - vars:
+      title: "Add user preferences endpoint"
+      diff: |
+        New endpoint for user preferences.
+        Files: api/preferences.py
+    assert:
+      - type: contains-json
+      - type: javascript
+        value: |
+          const o = JSON.parse(output);
+          return o.project && o.severity && o.summary && Array.isArray(o.affected_files);

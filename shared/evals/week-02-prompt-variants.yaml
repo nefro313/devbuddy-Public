@@ -1,0 +1,59 @@
+# Week 2 — Prompt variant comparison with Promptfoo
+#
+# Compare zero-shot, few-shot, and chain-of-thought prompts against the same schema.
+# Run:
+#   npx promptfoo@latest eval --config shared/evals/week-02-prompt-variants.yaml
+#
+# Prereqs:
+#   export OPENROUTER_API_KEY=sk-or-your-key
+
+description: "Week 2 — prompt variants compare structured-output quality"
+
+providers:
+  - id: openrouter:openai/gpt-4o-mini
+    label: gpt-4o-mini
+    config:
+      temperature: 0
+
+prompts:
+  - file://shared/prompts/zero-shot.txt
+  - file://shared/prompts/few-shot.txt
+  - file://shared/prompts/chain-of-thought.txt
+
+tests:
+  - vars:
+      title: "Fix login redirect loop in auth-service"
+      diff: |
+        Updated session token validation in auth.py.
+        Expired tokens now return 401 instead of looping.
+        Files: src/auth.py, tests/test_auth.py
+    assert:
+      - type: contains-json
+      - type: javascript
+        value: "['critical','high'].includes(JSON.parse(output).severity)"
+      - type: javascript
+        value: "Array.isArray(JSON.parse(output).affected_files) && JSON.parse(output).affected_files.length > 0"
+
+  - vars:
+      title: "Update README with setup instructions"
+      diff: |
+        Added Python 3.11+ requirement to README.
+        Files: README.md
+    assert:
+      - type: contains-json
+      - type: javascript
+        value: "JSON.parse(output).severity === 'low'"
+      - type: javascript
+        value: "typeof JSON.parse(output).project === 'string' && JSON.parse(output).project.length > 0"
+
+  - vars:
+      title: "Increase payment processing timeout"
+      diff: |
+        Payment API timeout increased from 30s to 60s.
+        Files: payment-api/config.py, payment-api/handler.py
+    assert:
+      - type: contains-json
+      - type: javascript
+        value: "['critical','high'].includes(JSON.parse(output).severity)"
+      - type: javascript
+        value: "typeof JSON.parse(output).summary === 'string' && JSON.parse(output).summary.length > 10"

@@ -35,12 +35,18 @@ def main() -> None:
 
     if shutil.which("uv"):
         print("Using uv (fast).")
-        run(["uv", "venv"])
+        if VENV.exists():
+            print(f"  .venv already exists at {VENV}, skipping creation.")
+        else:
+            run(["uv", "venv"])
         run(["uv", "pip", "install", "-r", "requirements.txt"])
     else:
         print("uv not found; using python venv + pip.")
         print("(Tip: install uv for faster setups: https://docs.astral.sh/uv/)")
-        run([sys.executable, "-m", "venv", str(VENV)])
+        if VENV.exists():
+            print(f"  .venv already exists at {VENV}, skipping creation.")
+        else:
+            run([sys.executable, "-m", "venv", str(VENV)])
         py = str(venv_python())
         run([py, "-m", "pip", "install", "--upgrade", "pip"])
         run([py, "-m", "pip", "install", "-r", "requirements.txt"])

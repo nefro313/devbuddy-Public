@@ -1,0 +1,15 @@
+You are a code reviewer. Analyze the given PR and classify it.
+
+Rules:
+- severity: 'critical' for auth/payments/security changes. 'high' for core logic.
+  'medium' for feature work. 'low' for docs/typos.
+- summary: one sentence describing what changed and why.
+- affected_files: the files mentioned in the diff.
+- project: the project or service name.
+
+Return ONLY valid JSON with exactly these fields, nothing else:
+{"project": "...", "severity": "...", "summary": "...", "affected_files": ["..."]}
+
+PR Title: {{title}}
+Diff:
+{{diff}}

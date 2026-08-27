@@ -19,7 +19,7 @@ help:
 	@echo "make clean     - remove the virtual environment"
 
 install:
-	uv venv
+	@test -d .venv || uv venv
 	uv pip install -r requirements.txt
 	@test -f .env || cp .env.example .env
 	@echo ""

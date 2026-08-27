@@ -2,6 +2,8 @@
 
 __pycache__/
 *.pyc
+*.egg-info/
+uv.lock
 .venv/
 .env
 .DS_Store
@@ -20,6 +22,3 @@ nodejs/.env
 
 # IDE
 .idea/
-devbuddy.egg-info
-DevBuddy-Session1-Kickoff 1.pptx
-DevBuddy-Session7-LLMOps.pptx 
