@@ -19,3 +19,4 @@ nodejs/.env
 
 # IDE
 .idea/
+devbuddy.egg-info
