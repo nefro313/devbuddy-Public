@@ -42,7 +42,7 @@ public class Demo03InferenceParameters {
 
             System.out.println("  temp=0.0 (deterministic) — same input, run twice:");
             for (int i = 1; i <= 2; i++) {
-                BuildCheck r = schemas.analyzePr(PR_TITLE, PR_DIFF, 0.0, 512);
+                BuildCheck r = schemas.analyzePr(PR_TITLE, PR_DIFF, 0.0, 200);
                 System.out.printf("    run %d: severity=%s  summary=\"%s\"%n",
                         i, r.severity().value(), r.summary());
             }
@@ -51,7 +51,7 @@ public class Demo03InferenceParameters {
 
             System.out.println("  temp=1.0 (creative) — same input, run twice:");
             for (int i = 1; i <= 2; i++) {
-                BuildCheck r = schemas.analyzePr(PR_TITLE, PR_DIFF, 1.0, 512);
+                BuildCheck r = schemas.analyzePr(PR_TITLE, PR_DIFF, 1.0, 200);
                 System.out.printf("    run %d: severity=%s  summary=\"%s\"%n",
                         i, r.severity().value(), r.summary());
             }
@@ -70,7 +70,7 @@ public class Demo03InferenceParameters {
             System.out.println("-".repeat(65));
             System.out.println();
 
-            for (int limit : new int[]{512, 200, 50, 15, 8}) {
+            for (int limit : new int[]{200, 50, 15, 8}) {
                 try {
                     BuildCheck r = schemas.analyzePr(PR_TITLE, PR_DIFF, 0.0, limit);
                     System.out.printf("  maxTokens=%3d: ✓ %s%n", limit, r.severity().value());
@@ -81,8 +81,7 @@ public class Demo03InferenceParameters {
                 }
             }
             System.out.println();
-            System.out.println("  maxTokens=512 → safe. maxTokens=200 may still fail depending on model/provider.");
-            System.out.println("  maxTokens=8 → truncated, validation fails.");
+            System.out.println("  maxTokens=200 → safe. maxTokens=8 → truncated, validation fails.");
             System.out.println("  Rule: maxTokens must fit your schema. Measure, don't guess.");
             System.out.println();
             System.out.println("=".repeat(65));

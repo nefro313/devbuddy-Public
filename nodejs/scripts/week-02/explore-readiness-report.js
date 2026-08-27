@@ -10,7 +10,6 @@ import { readFileSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
 import { ServiceReadinessReportSchema } from "../../src/schemas.js";
-import { config } from "../../src/config.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = resolve(__dirname, "..", "..", "..", "shared", "data");
@@ -18,7 +17,6 @@ const DATA_DIR = resolve(__dirname, "..", "..", "..", "shared", "data");
 console.log("=".repeat(70));
 console.log("  ServiceReadinessReport — Reference Validation");
 console.log("=".repeat(70));
-console.log(`  Model: ${config.model}`);
 console.log();
 
 // ── Reference: healthy scenario ───────────────────────────────
@@ -47,36 +45,40 @@ console.log();
 // ═══════════════════════════════════════════════════════════════════
 // TAKE-HOME ASSIGNMENT
 // ═══════════════════════════════════════════════════════════════════
-//
-// PART A — Load the other two scenarios:
-//   1. Extend this script to also load and validate:
-//      shared/data/service-readiness-degraded.json
-//      shared/data/service-readiness-unknown.json
-//   2. Tests are already in tests/test_schemas.js
-//      (the degraded and unknown scenario tests are provided)
-//
-// PART B — LLM integration:
-//   Use generateReadinessReport() from src/llm_functions.js to feed
-//   the mock data to the LLM and get back a typed report.
-//
-//   Example:
-//
-//     import { generateReadinessReport } from
-//       '../../src/llm_functions.js';
-//
-//     const data = JSON.parse(
-//       readFileSync('../../shared/data/
-//         service-readiness-healthy.json', 'utf-8'));
-//
-//     const report = await generateReadinessReport({
-//       serviceName: data.service.name,
-//       buildData: data.build,
-//       deployData: data.deployment,
-//       temperature: 0.0,
-//     });
-//
-//     console.log(JSON.stringify(report, null, 2));
-//
-//   Run this for all 3 scenarios. Compare the LLM's verdict
-//   to the hand-written JSON — does the model agree? Where
-//   does it differ? What would you change in the system prompt?
+console.log("─".repeat(70));
+console.log("  TAKE-HOME ASSIGNMENT");
+console.log("─".repeat(70));
+console.log();
+console.log("  PART A — Load the other two scenarios:");
+console.log("    1. Extend this script to also load and validate:");
+console.log("       shared/data/service-readiness-degraded.json");
+console.log("       shared/data/service-readiness-unknown.json");
+console.log("    2. Tests are already in tests/test_schemas.js");
+console.log("       (the degraded and unknown scenario tests are provided)");
+console.log();
+console.log("  PART B — LLM integration:");
+console.log("    Use generateReadinessReport() from src/schemas.js to feed");
+console.log("    the mock data to the LLM and get back a typed report.");
+console.log();
+console.log("    Example:");
+console.log();
+console.log("    import { generateReadinessReport } from");
+console.log("      '../../src/schemas.js';");
+console.log();
+console.log("    const data = JSON.parse(");
+console.log("      readFileSync('../../shared/data/");
+console.log("        service-readiness-healthy.json', 'utf-8'));");
+console.log();
+console.log("    const report = await generateReadinessReport({");
+console.log("      serviceName: data.service.name,");
+console.log("      buildData: data.build,");
+console.log("      deployData: data.deployment,");
+console.log("      temperature: 0.0,");
+console.log("    });");
+console.log();
+console.log("    console.log(JSON.stringify(report, null, 2));");
+console.log();
+console.log("    Run this for all 3 scenarios. Compare the LLM's verdict");
+console.log("    to the hand-written JSON — does the model agree? Where");
+console.log("    does it differ? What would you change in the system prompt?");
+console.log("─".repeat(70));

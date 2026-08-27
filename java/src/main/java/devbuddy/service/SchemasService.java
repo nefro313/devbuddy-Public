@@ -69,16 +69,8 @@ public class SchemasService {
      * @param maxTokens   max tokens in response (null = model default)
      */
     public BuildCheck analyzePr(String title, String diff, double temperature, Integer maxTokens) {
-        return analyzePrWithPrompt(title, diff, ANALYZE_PR_SYSTEM_PROMPT, temperature, maxTokens);
-    }
-
-    /**
-     * Analyze a PR using a caller-supplied system prompt, useful for prompt-variant demos.
-     */
-    public BuildCheck analyzePrWithPrompt(
-            String title, String diff, String systemPrompt, double temperature, Integer maxTokens) {
         ChatResponse response = chatClient.prompt()
-                .system(systemPrompt)
+                .system(ANALYZE_PR_SYSTEM_PROMPT)
                 .user("PR Title: " + title + "\n\nDiff:\n" + diff)
                 .options(options(temperature, maxTokens,
                         JsonSchemas.responseFormat("build_check", JsonSchemas.BUILD_CHECK)))

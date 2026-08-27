@@ -4,8 +4,9 @@
 
 ## Prerequisites
 
-- Python 3 (`python --version` or `py --version`)
-- Node.js (LTS recommended, `node --version`) — for Promptfoo evals
+- Python 3.11 or later (`python --version`)
+- Node.js 20 or later (`node --version`) — for Promptfoo evals (Week 7)
+- Docker Desktop (or equivalent) — for Qdrant vector database (Week 3+)
 - Git
 - An OpenRouter API key (check `#devbuddy-series` or contact the ops team)
 
@@ -36,26 +37,6 @@ Each week: `git pull upstream main` to get the latest.
 
 ## Step 3: Set Up Python Environment
 
-**One-command setup (preferred):**
-
-```bash
-cd python
-python install.py
-```
-
-`install.py` creates the venv and installs the Week 0 core dependencies. It
-**prefers `uv`** (fast) and falls back to `python -m venv` + `pip` when uv
-isn't installed.
-
-**Alternative — make (requires uv):**
-
-```bash
-cd python
-make install
-```
-
-**Manual fallback:**
-
 ```bash
 cd python
 python -m venv .venv
@@ -65,21 +46,32 @@ source .venv/bin/activate        # macOS/Linux
 pip install -r requirements.txt
 ```
 
-Later weeks install extra deps on demand (see the groups in `requirements.txt`,
-or `uv pip install -e ".[rag]"` etc.). Dev tooling (pytest): `uv pip install -r requirements-dev.txt`.
+---
+
+## Step 4: Start Qdrant (Week 3+)
+
+Qdrant is the vector database for RAG. Start it with Docker:
+
+```bash
+cd devbuddy   # repo root (where docker-compose.yml lives)
+docker-compose up -d   # or 'docker compose up -d' if you have the compose plugin
+```
+
+Verify it's running:
+
+```bash
+curl http://localhost:6333/healthz
+# → {"title":"healthz","version":"..."}
+```
+
+Dashboard at http://localhost:6333/dashboard
 
 ---
 
-## Step 4: Configure Your API Key
+## Step 5: Configure Your API Key
 
 ```bash
 cp .env.example .env
-```
-
-Windows PowerShell:
-
-```powershell
-Copy-Item .env.example .env
 ```
 
 Edit `.env` and add your OpenRouter API key:
@@ -95,11 +87,10 @@ Change `DEVBUDDY_MODEL` to any OpenRouter model string (`anthropic/claude-sonnet
 
 ---
 
-## Step 5: Run the Verification Script
+## Step 6: Run the Verification Script
 
 ```bash
-python run.py           # auto-selects uv or the venv
-# or directly: python src/verification.py
+python src/verification.py
 ```
 
 Expected output:
@@ -144,7 +135,7 @@ Expected output:
 
 ---
 
-## Step 6: Run the Integration Test
+## Step 7: Run the Integration Test
 
 ```bash
 python tests/test_integration.py
@@ -170,7 +161,7 @@ This validates everything end-to-end:
 
 ---
 
-## Step 7: Post to the Channel
+## Step 8: Post to the Channel
 
 Copy your terminal output and post it to `#devbuddy-series` with one sentence:
 
@@ -178,7 +169,7 @@ Copy your terminal output and post it to `#devbuddy-series` with one sentence:
 
 ---
 
-## Step 8: Verify Promptfoo (Optional)
+## Step 9: Verify Promptfoo (Optional)
 
 Promptfoo runs evals against your LLM outputs. This smoke test demonstrates:
 - **Multi-model comparison** — same prompt, GPT-4o-mini vs Gemini Flash
@@ -189,14 +180,6 @@ Promptfoo runs evals against your LLM outputs. This smoke test demonstrates:
 ```bash
 cd ../shared/evals
 export OPENROUTER_API_KEY=sk-or-your-key
-npx promptfoo@latest eval --config week-00-smoke.yaml
-```
-
-Windows PowerShell:
-
-```powershell
-cd ..\shared\evals
-$env:OPENROUTER_API_KEY = "sk-or-your-key"
 npx promptfoo@latest eval --config week-00-smoke.yaml
 ```
 
@@ -211,6 +194,6 @@ You'll see a table comparing both models across all 4 test cases — pass/fail, 
 | `OPENROUTER_API_KEY not set` | Did you copy `.env.example` to `.env`? Add your key? Running from `python/`? |
 | `ModuleNotFoundError: langchain_openai` | `pip install -r requirements.txt` from `python/` |
 | `ModuleNotFoundError: src` | You must run from `python/`: `cd python && python src/verification.py` |
-| `python: command not found` | Try `python3` (Linux/macOS) or `py` (Windows) |
+| `python: command not found` | Try `python3`, or install Python 3.11+ |
 | Script times out | Check network. Shared sandbox keys may be rate-limited. |
 | Anything else | Post in `#devbuddy-series`. Public debugging builds shared knowledge. |

@@ -12,7 +12,7 @@
     <description>DevBuddy AI Practitioner Series — Java CLI</description>
 
     <properties>
-        <maven.compiler.release>17</maven.compiler.release>
+        <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-ai.version>1.0.0</spring-ai.version>
         <logback.version>1.5.12</logback.version>
@@ -82,12 +82,61 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Week 3 — RAG: Qdrant vector store (gRPC client, runs in Docker) -->
+        <dependency>
+            <groupId>io.qdrant</groupId>
+            <artifactId>client</artifactId>
+            <version>1.19.0</version>
+        </dependency>
+
+        <!-- io.qdrant:client declares its gRPC/protobuf/guava deps as runtime
+             scope, but RagService references protobuf message types directly,
+             so promote them to compile scope (versions match the client's POM). -->
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>3.25.9</version>
+        </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-api</artifactId>
+            <version>1.83.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-protobuf</artifactId>
+            <version>1.83.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-stub</artifactId>
+            <version>1.83.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>33.6.0-android</version>
+        </dependency>
+
+        <!-- Week 3 — Local embeddings: all-MiniLM-L6-v2 via DJL + ONNX Runtime -->
+        <dependency>
+            <groupId>ai.djl</groupId>
+            <artifactId>api</artifactId>
+            <version>0.36.0</version>
+        </dependency>
+        <dependency>
+            <groupId>ai.djl.huggingface</groupId>
+            <artifactId>tokenizers</artifactId>
+            <version>0.36.0</version>
+        </dependency>
+        <dependency>
+            <groupId>ai.djl.onnxruntime</groupId>
+            <artifactId>onnxruntime-engine</artifactId>
+            <version>0.36.0</version>
+        </dependency>
+
         <!--
         Later weeks uncomment as needed:
-
-        Week 3 (RAG):
-            spring-ai-chroma-store
-            spring-ai-pgvector-store
 
         Week 5 (MCP):
             spring-ai-starter-mcp-server  (or raw MCP SDK)
@@ -101,16 +150,6 @@
 
     <build>
         <plugins>
-            <!-- Ensure modern Java toolchain settings are applied during compile -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.13.0</version>
-                <configuration>
-                    <release>${maven.compiler.release}</release>
-                </configuration>
-            </plugin>
-
             <!-- Executable fat jar -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -129,6 +168,18 @@
                                     <mainClass>devbuddy.Verification</mainClass>
                                 </transformer>
                             </transformers>
+                            <!-- gRPC/protobuf/netty (Qdrant client) ship signed jars;
+                                 strip signature files so the fat jar still builds. -->
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
                         </configuration>
                     </execution>
                 </executions>

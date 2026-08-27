@@ -41,15 +41,6 @@ cp .env.example .env
 node src/verification.js
 ```
 
-### Java
-
-```bash
-cd java
-# Edit src/main/resources/application.properties → set your API key
-mvn package -DskipTests -q
-java -jar target/devbuddy-0.1.0.jar
-```
-
 **Expected output:** You should see `✅ VERIFICATION PASSED` with token counts and cost printed for 3 projects.
 
 ---

@@ -30,7 +30,7 @@
               └──────┬───────┘  └───┬────┘  └──────┬────────┘
                      │              │               │
               ┌──────▼──────┐ ┌────▼────────┐ ┌───▼───────────┐
-              │  ChromaDB   │ │ Mock APIs   │ │ Pydantic/Zod   │
+              │  Qdrant     │ │ Mock APIs   │ │ Pydantic/Zod   │
               │  Vector     │ │ + Real data │ │ Validation     │
               │  Store      │ │ sources     │ │ + Auto-retry   │
               └─────────────┘ └─────────────┘ └───────────────┘
@@ -106,7 +106,7 @@ Week 7:  src/agent.py ← guardrails + cost + tracing          Production
 | Framework (Python, Node.js) | LangChain + LangGraph |
 | Framework (Java) | Spring AI |
 | Validation | Pydantic (Python), Zod (Node.js), Jakarta Bean Validation (Java) |
-| Vector Store | ChromaDB |
+| Vector Store | Qdrant |
 | Embeddings | sentence-transformers (all-MiniLM-L6-v2) |
 | Evals | Promptfoo (`npx promptfoo`, configs in `shared/evals/`) |
 

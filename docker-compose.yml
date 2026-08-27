@@ -1,0 +1,21 @@
+# DevBuddy — Qdrant Vector Database
+#
+# Starts Qdrant on port 6333 (REST API) and 6334 (gRPC).
+# Dashboard available at http://localhost:6333/dashboard
+#
+# Usage:
+#   docker-compose up -d          # start (use 'docker compose' if plugin installed)
+#   docker-compose down           # stop
+#   docker-compose down -v        # stop and delete all data
+
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+volumes:
+  qdrant_data:

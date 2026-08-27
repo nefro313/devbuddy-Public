@@ -51,6 +51,8 @@ Output:
 | LLM Provider | OpenRouter (via Spring AI `spring-ai-openai`) |
 | DI Container | Spring Framework `AnnotationConfigApplicationContext` |
 | Validation / Structured Output | Java records + Jackson + native `response_format=json_schema` |
+| Vector Store (Week 3) | Qdrant (Docker, gRPC `io.qdrant:client`) |
+| Embeddings (Week 3) | `all-MiniLM-L6-v2` (local, DJL + ONNX Runtime, no API cost) |
 | Build Tool | Maven (no Boot, no embedded server) |
 
 ## Architecture
@@ -95,6 +97,11 @@ java/
     │   │   │   ├── JsonSchemas.java        # JSON schemas → response_format=json_schema
     │   │   │   └── SchemasService.java     # analyzePr + generateReadinessReport (Week 2)
     │   │   ├── scripts/week02/            # Week 2 demos (run with mvn exec:java)
+    │   │   ├── scripts/week03/            # Week 3 RAG demos (embed/retrieve/ground, hybrid)
+    │   │   ├── rag/                       # Week 3 RAG pipeline
+    │   │   │   ├── RagService.java        # index/retrieve/hybridSearch/groundedAnswer
+    │   │   │   ├── EmbeddingService.java  # all-MiniLM-L6-v2 via DJL + ONNX Runtime
+    │   │   │   └── DocumentChunker.java   # recursive character splitter
     │   │   └── cost/
     │   │       └── CostTracker.java        # Token → cost calculation
     │   └── resources/
@@ -102,7 +109,9 @@ java/
     │       └── logback.xml                 # Clean console logging (%msg%n)
     └── test/
         └── java/devbuddy/
-            └── IntegrationTest.java        # 5 smoke tests (JUnit 5)
+            ├── IntegrationTest.java        # 5 smoke tests (JUnit 5)
+            ├── RagTest.java                # Week 3 RAG (retrieval — needs Qdrant)
+            └── RagLlmTest.java             # Week 3 grounded answers (needs OpenRouter)
 ```
 
 ## Differences from Python / Node.js
@@ -115,6 +124,8 @@ java/
 | Structured output | `with_structured_output()` | `withStructuredOutput()` | `response_format=json_schema` (native) → Jackson parse + record validation |
 | Cost tracking | Inline in verification | `config.js` export | `CostTracker` static utility |
 | Entry point | `if __name__ == "__main__"` | `main().catch(...)` | `Verification.main()` bootstraps Spring context |
+| Embeddings | `HuggingFaceEmbeddings` | `@xenova/transformers` | DJL + ONNX Runtime (`EmbeddingService`) |
+| Vector store | `QdrantVectorStore` (REST 6333) | `@langchain/qdrant` (REST 6333) | `QdrantClient` (gRPC 6334) |
 
 ## Week 2 — Structured Output Demos
 
@@ -142,6 +153,51 @@ mvn -q compile exec:java -Dexec.mainClass=devbuddy.scripts.week02.Demo03Inferenc
 # Explore: validate a ServiceReadinessReport from shared/data (no API calls)
 mvn -q compile exec:java -Dexec.mainClass=devbuddy.scripts.week02.ExploreReadinessReport
 ```
+
+## Week 3 — RAG & Context Engineering
+
+Week 3 grounds the model in your own data: embed, chunk, store in Qdrant,
+retrieve, then answer strictly from the retrieved context. Mirrors
+`src/rag.py` / `src/rag.js`.
+
+**Prerequisites:** Qdrant running (`docker-compose up -d` from the repo root),
+plus `OPENROUTER_API_KEY` for the grounded-answer demos. The embedding model
+(`all-MiniLM-L6-v2`, ~24MB) downloads once on first use.
+
+```bash
+cd java
+
+# Demo 1: embed → retrieve → ground (needs OPENROUTER_API_KEY)
+mvn -q compile exec:java -Dexec.mainClass=devbuddy.scripts.week03.Demo01EmbedRetrieveGround
+
+# Demo 2: out-of-corpus vs in-corpus (needs OPENROUTER_API_KEY)
+mvn -q compile exec:java -Dexec.mainClass=devbuddy.scripts.week03.Demo02HallucinateGround
+
+# Demo 3: chunk size 256/512/1024 (no API key — Qdrant only)
+mvn -q compile exec:java -Dexec.mainClass=devbuddy.scripts.week03.Demo03ChunkSize
+
+# Demo 4: hybrid search, vector + BM25 + RRF (no API key)
+mvn -q compile exec:java -Dexec.mainClass=devbuddy.scripts.week03.Demo04HybridSearch
+
+# Tests (retrieval only — needs Qdrant)
+mvn test -Dtest=RagTest
+
+# Tests (grounded answers — needs Qdrant + OPENROUTER_API_KEY)
+mvn test -Dtest=RagLlmTest
+```
+
+| Function | What it does |
+|----------|--------------|
+| `indexDocuments(dir, chunkSize, chunkOverlap)` | Load `.md`/`.txt`, chunk, embed, store in Qdrant |
+| `retrieve(query, k)` | Top-k semantic search |
+| `hybridSearch(query, k)` | BM25 + vector fused via Reciprocal Rank Fusion |
+| `groundedAnswer(query, k, temperature)` | Retrieve → inject context → LLM answer |
+| `groundedAnswerWithChunks(query, k, temperature)` | Answer + retrieved chunks for transparency |
+
+> **Why Qdrant, not Chroma?** Qdrant is production-grade, cross-language
+> (Python/Node/Java all hit the same `devbuddy-docs` collection), and ships a
+> dashboard at http://localhost:6333/dashboard. The Java client uses gRPC
+> (port 6334); Python/Node use the REST API (port 6333).
 
 ## Each Week
 

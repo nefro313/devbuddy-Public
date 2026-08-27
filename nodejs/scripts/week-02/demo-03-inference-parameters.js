@@ -7,9 +7,9 @@
  * Run: node scripts/week-02/demo-03-inference-parameters.js
  */
 import { HumanMessage } from "@langchain/core/messages";
-import { analyzePr } from "../../src/llm_functions.js";
+import { analyzePr } from "../../src/schemas.js";
 import { getLlm } from "../../src/llm.js";
-import { calculateCost, config } from "../../src/config.js";
+import { calculateCost } from "../../src/config.js";
 
 const PR_TITLE = "Consolidate error handling across user profile module";
 const PR_DIFF = [
@@ -23,7 +23,6 @@ const PR_DIFF = [
 console.log("=".repeat(65));
 console.log("  Demo 3: Inference Parameters — Temp, Max Tokens, Cost");
 console.log("=".repeat(65));
-console.log(`  Model: ${config.model}`);
 console.log();
 console.log(`  INPUT: ${PR_TITLE}`);
 for (const line of PR_DIFF.split("\n")) {
@@ -32,43 +31,34 @@ for (const line of PR_DIFF.split("\n")) {
 console.log();
 
 // ═══════════════════════════════════════════════════════════════
-// Part 1: Temperature — determinism vs. judgment
+// Part 1: Temperature — content varies, contract holds
 // ═══════════════════════════════════════════════════════════════
 console.log("─".repeat(65));
-console.log("  PART 1: Temperature — determinism vs. judgment");
+console.log("  PART 1: Temperature — same input, 4 temperatures");
 console.log("─".repeat(65));
 console.log();
 
-console.log("  temp=0.0 (deterministic) — same input, run twice:");
-for (let i = 1; i <= 2; i++) {
-  const r = await analyzePr({
+for (const temp of [0.0, 0.3, 0.7, 1.0]) {
+  const label =
+    temp === 0 ? "production" : temp < 0.7 ? "warm" : "creative";
+  const result = await analyzePr({
     title: PR_TITLE,
     diff: PR_DIFF,
-    temperature: 0.0,
+    temperature: temp,
     maxTokens: 200,
   });
-  console.log(`    run ${i}: severity=${r.severity}  summary="${r.summary}"`);
+  console.log(`  temp=${temp} (${label}):`);
+  console.log(`    severity=${result.severity}`);
+  console.log(`    summary="${result.summary}"`);
+  console.log();
 }
-console.log("    → same verdict, consistent phrasing.");
-console.log();
 
-console.log("  temp=1.0 (creative) — same input, run twice:");
-for (let i = 1; i <= 2; i++) {
-  const r = await analyzePr({
-    title: PR_TITLE,
-    diff: PR_DIFF,
-    temperature: 1.0,
-    maxTokens: 200,
-  });
-  console.log(`    run ${i}: severity=${r.severity}  summary="${r.summary}"`);
-}
-console.log("    → same verdict, but the phrasing drifts more.");
-console.log();
-
-console.log("  Key: every run returned a VALID BuildCheck — the schema guarantees");
-console.log("  validity at ANY temperature. Temperature only nudges how much the");
-console.log("  phrasing varies; on short fields that effect is subtle. temp=0 is a");
-console.log("  reproducibility choice (tests, CI, caching), not a correctness rule.");
+console.log("  This diff has NO trigger keywords (no auth, payments, security).");
+console.log("  Severity is a judgment call: refactor? feature? cleanup?");
+console.log("  temp=0.0 → picks one answer, sticks to it every run.");
+console.log("  temp=0.7 → may flip between 'medium' and 'low' across runs.");
+console.log("  temp=1.0 → wider exploration. Same diff, different verdicts.");
+console.log("  Key: Zod guarantees VALIDITY. Temperature controls JUDGMENT.");
 console.log();
 
 // ═══════════════════════════════════════════════════════════════
@@ -79,7 +69,7 @@ console.log("  PART 2: Max Tokens — cost guard or truncation risk?");
 console.log("─".repeat(65));
 console.log();
 
-for (const limit of [512, 200, 50, 15, 8]) {
+for (const limit of [200, 50, 15, 8]) {
   try {
     const result = await analyzePr({
       title: PR_TITLE,
@@ -95,8 +85,7 @@ for (const limit of [512, 200, 50, 15, 8]) {
 }
 
 console.log();
-console.log("  Set maxTokens=512 → safe. Cost ceiling: moderate.");
-console.log("  Set maxTokens=200 → still may fail depending on model/provider.");
+console.log("  Set maxTokens=200 → safe. Cost ceiling: high.");
 console.log("  Set maxTokens=8   → truncated. Validation fails.");
 console.log("  Rule: maxTokens must fit your schema. Measure, don't guess.");
 console.log();
@@ -128,7 +117,8 @@ for (const temp of [0.0, 0.7]) {
 
 console.log();
 console.log("  temp=0.0 vs temp=0.7 — cost is similar.");
-console.log("  The choice isn't about saving tokens — it's determinism vs judgment.");
+console.log("  The architectural choice isn't about saving tokens here.");
+console.log("  It's about deterministic contracts vs creative exploration.");
 console.log();
 console.log("=".repeat(65));
 console.log("  Inference parameters are architectural decisions, not knobs.");

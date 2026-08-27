@@ -17,9 +17,7 @@ import { fileURLToPath } from "url";
 // ── Resolve .env path relative to this file ──────────────────
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const envPath = resolve(__dirname, "..", ".env");
-// override: false means a value you set in the terminal (process.env) WINS
-// over .env — so you can override the key/model per run. .env is the fallback.
-dotenv.config({ path: envPath, override: false });
+dotenv.config({ path: envPath, override: true });
 
 // ── Read raw value (with fallback) ───────────────────────────
 const get = (key, fallback) => process.env[key] || fallback;
@@ -39,11 +37,7 @@ const required = (key) => {
 // ── Config object — the single source of truth ───────────────
 export const config = {
   // LLM Provider
-  // Lazy getter: validate only when actually used, so importing config.js
-  // (e.g. from pure schema tests) doesn't require an API key.
-  get openRouterApiKey() {
-    return required("OPENROUTER_API_KEY");
-  },
+  openRouterApiKey: required("OPENROUTER_API_KEY"),
   model: get("DEVBUDDY_MODEL", "openai/gpt-4o-mini"),
   modelAlt: get("DEVBUDDY_MODEL_ALT", null),  // optional, for model swap tests
   openRouterBaseUrl: "https://openrouter.ai/api/v1",
@@ -68,11 +62,11 @@ export const config = {
     default: { input: 0.15, output: 0.6 },
   },
 
-  // Week 3 — RAG (not yet active, just defaults)
-  vectorStoreUrl: get("QDRANT_URL", "http://localhost:6333"),
+  // Week 3 — RAG
+  vectorStoreUrl: process.env.QDRANT_URL || "http://localhost:6333",
   embeddingModel: "Xenova/all-MiniLM-L6-v2",
   defaultChunkSize: 512,
-  defaultChunkOverlap: 50,
+  defaultChunkOverlap: 64,
 
   // Week 6 — Agent (not yet active)
   maxAgentSteps: 10,

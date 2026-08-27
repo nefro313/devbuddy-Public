@@ -1,5 +1,7 @@
 package devbuddy.config;
 
+import devbuddy.rag.EmbeddingService;
+import devbuddy.rag.RagService;
 import devbuddy.service.SchemasService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,6 +48,12 @@ public class AppConfig {
     @Value("${devbuddy.model-alt:#{null}}")
     private String modelAlt;
 
+    @Value("${devbuddy.qdrant.host:localhost}")
+    private String qdrantHost;
+
+    @Value("${devbuddy.qdrant.grpc-port:6334}")
+    private int qdrantGrpcPort;
+
     /**
      * Required for {@code @Value} resolution in {@code @Configuration} classes
      * when not using Spring Boot auto-configuration.
@@ -90,6 +98,18 @@ public class AppConfig {
     @Bean
     public SchemasService schemasService(ChatClient chatClient) {
         return new SchemasService(chatClient, model);
+    }
+
+    /** Week 3 — local all-MiniLM-L6-v2 embeddings (DJL + ONNX Runtime). */
+    @Bean
+    public EmbeddingService embeddingService() {
+        return new EmbeddingService();
+    }
+
+    /** Week 3 — RAG pipeline (Qdrant vector store + retrieval + grounded answers). */
+    @Bean
+    public RagService ragService(ChatClient chatClient, EmbeddingService embeddingService) {
+        return new RagService(chatClient, model, embeddingService, qdrantHost, qdrantGrpcPort);
     }
 
     /** Exposed as a named bean so other components can reference the model name. */

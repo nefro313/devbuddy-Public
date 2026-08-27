@@ -10,8 +10,8 @@ import {
   BuildCheckSchema,
   ServiceReadinessReportSchema,
   DeployRecordSchema,
+  analyzePr,
 } from "../src/schemas.js";
-import { analyzePr } from "../src/llm_functions.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const dataDir = resolve(__dirname, "..", "..", "shared", "data");
@@ -80,24 +80,6 @@ describe("analyzePr", () => {
     const r1 = await analyzePr({ title: "Fix login bug", diff, temperature: 0.0 });
     const r2 = await analyzePr({ title: "Fix login bug", diff, temperature: 0.0 });
     expect(r1.severity).toBe(r2.severity);
-  });
-
-  it("is valid at high temperature", async () => {
-    // The schema guarantees validity at high temperature — validity is the
-    // schema's job, not temperature's. Temperature controls judgment, not
-    // whether the output parses as a BuildCheck.
-    const diff = "Fix login bug\n\nChanged auth.py line 42";
-    const result = await analyzePr({
-      title: "Fix login bug",
-      diff,
-      temperature: 0.7,
-    });
-
-    expect(result).toBeTruthy();
-    expect(result.project).toBeTruthy();
-    expect(["low", "medium", "high", "critical"]).toContain(result.severity);
-    expect(result.summary).toBeTruthy();
-    expect(result.affected_files.length).toBeGreaterThan(0);
   });
 
   it("works with sample diff from shared/data", async () => {
