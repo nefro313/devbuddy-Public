@@ -22,7 +22,4 @@ nodejs/.env
 
 # IDE
 .idea/
-
-# Generated / session artifacts
-graphify-out/
-week-03-session/
+devbuddy.egg-info
