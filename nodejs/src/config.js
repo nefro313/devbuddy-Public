@@ -39,6 +39,7 @@ export const config = {
   // LLM Provider
   openRouterApiKey: required("OPENROUTER_API_KEY"),
   model: get("DEVBUDDY_MODEL", "openai/gpt-4o-mini"),
+  modelAlt: get("DEVBUDDY_MODEL_ALT", null),  // optional, for model swap tests
   openRouterBaseUrl: "https://openrouter.ai/api/v1",
 
   // Inference defaults

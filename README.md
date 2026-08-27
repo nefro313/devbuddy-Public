@@ -54,21 +54,6 @@
 
 ---
 
-## Schedule
-
-| Week | Topic | What You Build |
-|------|-------|---------------|
-| 0 | Setup | Fork the repo. Run `verification.py`. Post to channel. |
-| 1 | Kick-off | Architecture, rubric, AI vs Traditional Engineering |
-| 2 | Structured Outputs | `src/schemas.py` — typed objects, not prose |
-| 3 | RAG | `src/rag.py` — embed, chunk, retrieve, ground |
-| 4 | Tools | `src/tools.py` — function calling, error recovery |
-| 5 | MCP | `src/mcp_server.py` — shared tool ecosystem |
-| 6 | Agent | `src/agent.py` — orchestrator, imports everything |
-| 7 | Production | `src/guardrails.py` + cost + tracing + capstone |
-
----
-
 ## How Code Grows — The Import Graph
 
 Once a module is built, it is NEVER copied. It is IMPORTED.
@@ -85,6 +70,21 @@ Week 7:  src/agent.py ← guardrails + cost + tracing          Production
 
 ---
 
+## Schedule
+
+| Week | Topic | What You Build |
+|------|-------|---------------|
+| 0 | Setup | Fork the repo. Run `verification.py`. Post to channel. |
+| 1 | Kick-off | Architecture, rubric, AI vs Traditional Engineering |
+| 2 | Structured Outputs | `src/schemas.py` — typed objects, not prose |
+| 3 | RAG | `src/rag.py` — embed, chunk, retrieve, ground |
+| 4 | Tools | `src/tools.py` — function calling, error recovery |
+| 5 | MCP | `src/mcp_server.py` — shared tool ecosystem |
+| 6 | Agent | `src/agent.py` — orchestrator, imports everything |
+| 7 | Production | Guardrails + cost + tracing + capstone |
+
+---
+
 ## Levels
 
 | Level | Title | What it means |
@@ -98,54 +98,29 @@ Week 7:  src/agent.py ← guardrails + cost + tracing          Production
 
 ---
 
-## Quick Start
-
-```bash
-# 1. Fork this repo
-gh repo fork org/devbuddy --clone
-
-# 2. Add upstream
-cd devbuddy
-git remote add upstream https://github.com/org/devbuddy.git
-
-# 3. Install
-cd python
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-
-# 4. Set your key
-cp .env.example .env
-# Edit .env → add your OPENROUTER_API_KEY
-
-# 5. Verify
-python src/verification.py
-
-# 6. Post to #devbuddy-series
-```
-
-Full setup guide: [`SETUP.md`](SETUP.md)
-
----
-
 ## Tech Stack
 
 | Layer | Choice |
 |-------|--------|
 | LLM Provider | OpenRouter (one key, any model) |
-| Framework | LangChain + LangGraph (Python), Spring AI (Java) |
+| Framework (Python, Node.js) | LangChain + LangGraph |
+| Framework (Java) | Spring AI |
 | Validation | Pydantic (Python), Zod (Node.js), Jakarta Bean Validation (Java) |
 | Vector Store | ChromaDB |
 | Embeddings | sentence-transformers (all-MiniLM-L6-v2) |
-| Evals | Promptfoo |
+| Evals | Promptfoo (`npx promptfoo`, configs in `shared/evals/`) |
 
 ---
 
-## Each Week
+## Getting Started
+
+See [`SETUP.md`](SETUP.md) for step-by-step instructions. Quick version:
 
 ```bash
-cd python                              # Work from the python directory
-git pull upstream main                 # Get latest docs + data
-cat ../docs/week-NN.md                 # Read this week's task
-# Build in src/
-# Post result to #devbuddy-series
+gh repo fork org/devbuddy --clone
+cd devbuddy/python
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env   # add your OPENROUTER_API_KEY
+python src/verification.py
 ```

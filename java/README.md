@@ -8,14 +8,15 @@
 ```bash
 cd java
 
-# Set your API key
-export OPENROUTER_API_KEY=sk-or-your-key-here
-# Optional: override the model
-# export DEVBUDDY_MODEL=anthropic/claude-3.5-sonnet
+# Edit application.properties → set your OpenRouter API key
+# openrouter.api.key=sk-or-your-key-here
 
 # Build + run
 mvn package -DskipTests -q
 java -jar target/devbuddy-0.1.0.jar
+
+# Or run tests
+mvn test
 ```
 
 Output:
@@ -60,7 +61,7 @@ Output:
 │    │                                              │
 │    ├─ new AnnotationConfigApplicationContext(AppConfig)  │
 │    │     │                                        │
-│    │     ├─ @Bean OpenAiApi     ← OPENROUTER_API_KEY   │
+│    │     ├─ @Bean OpenAiApi     ← application.properties   │
 │    │     ├─ @Bean ChatModel     ← OpenRouter base URL  │
 │    │     └─ @Bean ChatClient    ← wraps ChatModel      │
 │    │                                              │
@@ -75,7 +76,7 @@ Output:
 └──────────────────────────────────────────────────┘
 ```
 
-No Spring Boot. No embedded web server. No `application.yml`. Just Spring IoC + Spring AI.
+No Spring Boot. No embedded web server. Just Spring IoC + Spring AI.
 
 ## Project Structure
 
@@ -83,17 +84,22 @@ No Spring Boot. No embedded web server. No `application.yml`. Just Spring IoC + 
 java/
 ├── pom.xml
 ├── README.md
-└── src/main/
-    ├── java/devbuddy/
-    │   ├── Verification.java           # Entry point + verification loop
-    │   ├── config/
-    │   │   └── AppConfig.java          # @Configuration — wires OpenAiApi, ChatModel, ChatClient
-    │   ├── schemas/
-    │   │   └── BuildCheck.java         # Typed record (Jackson serialization)
-    │   └── cost/
-    │       └── CostTracker.java        # Token → cost calculation
-    └── resources/
-        └── logback.xml                 # Clean console logging (%msg%n)
+└── src/
+    ├── main/
+    │   ├── java/devbuddy/
+    │   │   ├── Verification.java           # Entry point + verification loop
+    │   │   ├── config/
+    │   │   │   └── AppConfig.java          # @Configuration — wires OpenAiApi, ChatModel, ChatClient
+    │   │   ├── schemas/
+    │   │   │   └── BuildCheck.java         # Typed record (Jackson serialization)
+    │   │   └── cost/
+    │   │       └── CostTracker.java        # Token → cost calculation
+    │   └── resources/
+    │       ├── application.properties      # API key + model config
+    │       └── logback.xml                 # Clean console logging (%msg%n)
+    └── test/
+        └── java/devbuddy/
+            └── IntegrationTest.java        # 5 smoke tests (JUnit 5)
 ```
 
 ## Differences from Python / Node.js
@@ -102,7 +108,7 @@ java/
 |---------|--------|---------|------|
 | LLM Client | `ChatOpenAI(...)` | `new ChatOpenAI({...})` | `OpenAiApi.builder()` + `OpenAiChatModel.builder()` |
 | DI | None (module imports) | None (module imports) | `@Configuration` + `@Bean` → `AnnotationConfigApplicationContext` |
-| Config | `load_dotenv()` | `dotenv.config()` | `System.getenv("OPENROUTER_API_KEY")` |
+| Config | `load_dotenv()` | `dotenv.config()` | `application.properties` + `@PropertySource` |
 | Structured output | `with_structured_output()` | `withStructuredOutput()` | `chatResponse()` → Jackson `readValue()` |
 | Cost tracking | Inline in verification | `config.js` export | `CostTracker` static utility |
 | Entry point | `if __name__ == "__main__"` | `main().catch(...)` | `Verification.main()` bootstraps Spring context |

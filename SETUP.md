@@ -1,15 +1,14 @@
-# DevBuddy — Setup Guide (Python)
+# DevBuddy — Setup Guide
 
-Follow these steps to get DevBuddy running on your machine.
+Choose your language and follow the steps below.
 
 ---
 
 ## Prerequisites
 
-- Python 3.11 or later (`python --version`)
-- Git
-- [uv](https://docs.astral.sh/uv/) (fast Python package manager, recommended)
-- `make` (optional; macOS/Linux only. On Windows use `python install.py`)
+- **Python 3.11+** (`python --version`) — for the Python blueprint
+- **Node.js 20+** (`node --version`) — for the Node.js blueprint + Promptfoo evals
+- **Git**
 - An OpenRouter API key (check `#devbuddy-series` or contact the ops team)
 
 Install uv once:
@@ -44,7 +43,7 @@ On macOS/Linux with `make` installed, `make install` and `make run` do the same 
 # Via GitHub CLI
 gh repo fork org/devbuddy --clone
 
-# Or via GitHub UI: click Fork -> Clone your fork
+# Or via GitHub UI: click Fork → Clone your fork
 git clone https://github.com/YOUR_USERNAME/devbuddy.git
 cd devbuddy
 ```
@@ -57,68 +56,50 @@ cd devbuddy
 git remote add upstream https://github.com/org/devbuddy.git
 ```
 
-Each week you'll run `git fetch upstream` and check out that week's branch (see "Branch Layout" below).
+Each week you'll run `git pull upstream main` to get the latest docs and data.
 
 ---
 
-## Step 3: Set Up the Python Environment
-
-We use uv for fast, reproducible installs. The Week 0 dependency set is intentionally small, so this installs in seconds.
-
-```bash
-cd python
-python install.py   # creates .venv, installs Week 0 deps, scaffolds .env (Windows/macOS/Linux)
-```
-
-If you prefer to run the steps yourself:
-
-```bash
-cd python
-uv venv                          # creates .venv, picks Python 3.11+
-uv pip install -r requirements.txt
-```
-
-Later weeks pull heavier libraries. Install them only when you reach that week:
-
-```bash
-uv pip install -e ".[rag]"       # Week 3 (RAG: chromadb, embeddings, ...)
-uv pip install -e ".[mcp]"       # Week 5 (MCP)
-uv pip install -e ".[agent]"     # Week 6 (Agent: langgraph)
-```
-
-<details>
-<summary>No uv either? Plain venv + pip still works</summary>
+## Step 3: Set Up Python Environment
 
 ```bash
 cd python
 python -m venv .venv
-source .venv/bin/activate        # macOS/Linux
-# .venv\Scripts\activate         # Windows
+source .venv/bin/activate   # macOS/Linux
+# .venv\Scripts\activate    # Windows
+
 pip install -r requirements.txt
+cp .env.example .env
+# Edit .env → add your OPENROUTER_API_KEY
+
+python src/verification.py       # verify your environment
+python tests/test_integration.py  # run the integration test suite
 ```
+
 </details>
 
----
+### Node.js
 
-## Step 4: Configure Your API Key
+Full guide: [`nodejs/SETUP.md`](nodejs/SETUP.md) — or continue below.
 
-`make install` already copied `.env.example` to `.env` for you. Open `python/.env` and set your key:
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and add your OpenRouter API key:
 
 ```
 OPENROUTER_API_KEY=sk-or-your-actual-key
 ```
 
-(If you set up manually, run `cp .env.example .env` first.)
-
-**Never commit `.env` to git.** It's in `.gitignore`. Your key is loaded automatically from `python/.env` at runtime, so no manual `export` is needed.
+**Never commit `.env` to git.** It's in `.gitignore`.
 
 ---
 
 ## Step 5: Run the Verification Script
 
 ```bash
-python run.py
-# same as: uv run python src/verification.py  (or `make run` on macOS/Linux)
+python src/verification.py
 ```
 
 You should see output like:
@@ -144,39 +125,24 @@ You should see output like:
 
 ---
 
-## Step 6: Post to the Channel
+## Step 4: Post to the Channel
 
 Copy your terminal output and post it to `#devbuddy-series` with one sentence:
 
-> *"I want DevBuddy to help me with _____."*
-
----
-
-## Branch Layout — One Branch Per Week
-
-This repo uses **one branch per week**. `main` is the Week 0 baseline: stub files you build from. Each `week-NN` branch is that week's worked checkpoint. It adds `docs/week-NN.md`, the pre-reading, the completed solution under `src/`, and test fixtures under `shared/`.
-
-```bash
-git fetch upstream
-git checkout week-02        # switch to a specific week's materials
-```
-
-Available now: `week-01` through `week-06` (Week 6 = Agentic Workflows is the latest). If you miss a session, check out the next week's branch to get a clean starting point.
+> _"I want DevBuddy to help me with **\_**."_
 
 ---
 
 ## Troubleshooting
 
-| Problem | Fix |
-|---------|-----|
-| `make: command not found` | You're likely on Windows (`make` is a Unix tool). Use `python install.py` then `python run.py` instead. No make needed. |
-| `uv: command not found` | Fine. `python install.py` falls back to venv + pip automatically. Install uv only if you want faster setups. |
-| `OPENROUTER_API_KEY not set` | The key is auto-loaded from `python/.env`. Make sure `python/.env` exists and contains your real key (not the placeholder from `.env.example`). |
-| `ModuleNotFoundError: langchain_openai` | Run `python install.py` from the `python/` directory. |
-| `ModuleNotFoundError: src` | Run from the `python/` directory: `cd python && python run.py`. |
-| `python: command not found` | Use `python3` (e.g. `python3 install.py`). |
-| Verification script times out | Check your network. OpenRouter may be rate-limited on shared keys. |
-| Anything else | Post in `#devbuddy-series`. Don't DM — public debugging builds shared knowledge. |
+| Problem                                 | Fix                                                                                                        |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `OPENROUTER_API_KEY not set`            | Did you copy `.env.example` to `.env`? Did you add your key? Are you running from the `python/` directory? |
+| `ModuleNotFoundError: langchain_openai` | Run `pip install -r requirements.txt` from the `python/` directory                                         |
+| `ModuleNotFoundError: src`              | You must run from the `python/` directory: `cd python && python src/verification.py`                       |
+| `python: command not found`             | Use `python3` instead, or install Python 3.11+                                                             |
+| Verification script times out           | Check your network. OpenRouter may be rate-limited on shared keys.                                         |
+| Anything else                           | Post in `#devbuddy-series`. Don't DM — public debugging builds shared knowledge.                           |
 
 ---
 
@@ -184,4 +150,4 @@ Available now: `week-01` through `week-06` (Week 6 = Agentic Workflows is the la
 
 - Week 1 is the kick-off session. You'll see the full DevBuddy architecture.
 - The verification script you just ran is a microcosm of what DevBuddy becomes.
-- Each week: `git fetch upstream && git checkout week-NN`, read `docs/week-NN.md`, build in `python/src/`.
+- Each week: `cd python && git pull upstream main`, read `../docs/week-NN.md`, build in `src/`.
