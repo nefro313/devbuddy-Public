@@ -48,7 +48,7 @@ This installs all packages listed in `package.json`:
 - `@langchain/core` — messages, callbacks, runnable interface
 - `@langchain/langgraph` — agent orchestration (Week 6)
 - `zod` — typed schema validation
-- `chromadb` — vector store (Week 3)
+- `@langchain/qdrant` — vector store (Week 3)
 - `@xenova/transformers` — local embeddings (Week 3)
 - `@modelcontextprotocol/sdk` — MCP server/client (Week 5)
 - `dotenv` — environment variable loading

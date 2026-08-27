@@ -1,0 +1,31 @@
+{
+  "service": {
+    "name": "inventory-service",
+    "version": "0.9.1-beta",
+    "owner_team": "catalog"
+  },
+  "build": {
+    "status": "unknown",
+    "last_deploy": "2026-06-20T11:00:00Z",
+    "failing_since": null
+  },
+  "deployment": {
+    "recent_deploys": [],
+    "active_incidents": []
+  },
+  "verdict": {
+    "ready": false,
+    "confidence": "low",
+    "blockers": [
+      "No build status data available — last deploy was 8 days ago",
+      "No recent deployment history",
+      "Version 0.9.1-beta — pre-release, not production-graded"
+    ],
+    "recommended_next_steps": [
+      "Run a build health check on inventory-service",
+      "Review deployment pipeline configuration",
+      "Confirm with catalog team whether this service is production-ready"
+    ]
+  },
+  "evidence": []
+}

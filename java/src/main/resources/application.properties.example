@@ -1,0 +1,10 @@
+# DevBuddy — Java configuration
+# Copy this file to application.properties (git-ignored) and add your API key.
+# Or export OPENROUTER_API_KEY — Spring resolves ${...} from the environment.
+
+openrouter.api.key=${OPENROUTER_API_KEY}
+devbuddy.model=openai/gpt-4o-mini
+
+# Week 3 — RAG (Qdrant vector DB in Docker, docker-compose up -d)
+devbuddy.qdrant.host=localhost
+devbuddy.qdrant.grpc-port=6334

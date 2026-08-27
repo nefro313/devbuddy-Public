@@ -1,40 +1,14 @@
-# DevBuddy — Setup Guide (Python)
-
-Follow these steps to get DevBuddy running on your machine.
+# DevBuddy — Setup Guide
 
 ---
 
 ## Prerequisites
 
 - Python 3.11 or later (`python --version`)
+- Node.js 20 or later (`node --version`) — for Promptfoo evals (Week 7)
+- Docker Desktop (or equivalent) — for Qdrant vector database (Week 3+)
 - Git
-- [uv](https://docs.astral.sh/uv/) (fast Python package manager, recommended)
-- `make` (optional; macOS/Linux only. On Windows use `python install.py`)
 - An OpenRouter API key (check `#devbuddy-series` or contact the ops team)
-
-Install uv once:
-
-```bash
-# macOS / Linux
-curl -LsSf https://astral.sh/uv/install.sh | sh
-# Windows (PowerShell):
-# powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
-```
-
----
-
-## Quick Path (recommended)
-
-From the `python/` directory, one command does the whole setup: creates the virtual environment, installs the Week 0 dependencies, and scaffolds your `.env`. It works on Windows, macOS, and Linux and needs nothing but Python.
-
-```bash
-cd python
-python install.py
-# then edit python/.env, add your OPENROUTER_API_KEY, and:
-python run.py
-```
-
-On macOS/Linux with `make` installed, `make install` and `make run` do the same thing. That's it. The steps below explain it in detail.
 
 ---
 
@@ -44,7 +18,7 @@ On macOS/Linux with `make` installed, `make install` and `make run` do the same 
 # Via GitHub CLI
 gh repo fork org/devbuddy --clone
 
-# Or via GitHub UI: click Fork -> Clone your fork
+# Or via GitHub UI: click Fork → then clone your fork
 git clone https://github.com/YOUR_USERNAME/devbuddy.git
 cd devbuddy
 ```
@@ -57,94 +31,137 @@ cd devbuddy
 git remote add upstream https://github.com/org/devbuddy.git
 ```
 
-Each week you'll run `git fetch upstream` and check out that week's branch (see "Branch Layout" below).
+Each week: `git pull upstream main` to get the latest.
 
 ---
 
-## Step 3: Set Up the Python Environment
-
-We use uv for fast, reproducible installs. The Week 0 dependency set is intentionally small, so this installs in seconds.
-
-```bash
-cd python
-python install.py   # creates .venv, installs Week 0 deps, scaffolds .env (Windows/macOS/Linux)
-```
-
-If you prefer to run the steps yourself:
-
-```bash
-cd python
-uv venv                          # creates .venv, picks Python 3.11+
-uv pip install -r requirements.txt
-```
-
-Later weeks pull heavier libraries. Install them only when you reach that week:
-
-```bash
-uv pip install -e ".[rag]"       # Week 3 (RAG: chromadb, embeddings, ...)
-uv pip install -e ".[mcp]"       # Week 5 (MCP)
-uv pip install -e ".[agent]"     # Week 6 (Agent: langgraph)
-```
-
-<details>
-<summary>No uv either? Plain venv + pip still works</summary>
+## Step 3: Set Up Python Environment
 
 ```bash
 cd python
 python -m venv .venv
 source .venv/bin/activate        # macOS/Linux
 # .venv\Scripts\activate         # Windows
+
 pip install -r requirements.txt
 ```
-</details>
 
 ---
 
-## Step 4: Configure Your API Key
+## Step 4: Start Qdrant (Week 3+)
 
-`make install` already copied `.env.example` to `.env` for you. Open `python/.env` and set your key:
+Qdrant is the vector database for RAG. Start it with Docker:
+
+```bash
+cd devbuddy   # repo root (where docker-compose.yml lives)
+docker-compose up -d   # or 'docker compose up -d' if you have the compose plugin
+```
+
+Verify it's running:
+
+```bash
+curl http://localhost:6333/healthz
+# → {"title":"healthz","version":"..."}
+```
+
+Dashboard at http://localhost:6333/dashboard
+
+---
+
+## Step 5: Configure Your API Key
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and add your OpenRouter API key:
 
 ```
 OPENROUTER_API_KEY=sk-or-your-actual-key
+DEVBUDDY_MODEL=openai/gpt-4o-mini
 ```
 
-(If you set up manually, run `cp .env.example .env` first.)
+Change `DEVBUDDY_MODEL` to any OpenRouter model string (`anthropic/claude-sonnet`, `google/gemini-flash`, etc.).
 
-**Never commit `.env` to git.** It's in `.gitignore`. Your key is loaded automatically from `python/.env` at runtime, so no manual `export` is needed.
+**Never commit `.env`.** It's in `.gitignore`.
 
 ---
 
-## Step 5: Run the Verification Script
+## Step 6: Run the Verification Script
 
 ```bash
-python run.py
-# same as: uv run python src/verification.py  (or `make run` on macOS/Linux)
+python src/verification.py
 ```
 
-You should see output like:
+Expected output:
 
 ```
 ============================================================
   DevBuddy Verification — Week 0
 ============================================================
 
-[1/3] Checking: auth-service...
-  Status:      passing
-  Confidence:  30%
-  Reason:      I don't have real CI access...
-  Tokens:      147 (102 in / 45 out)
-  Cost:        $0.000042
-  Time:        1.23s
-  Type:        BuildCheck ← typed object, not a string!
+[1/3] Asking: Say 'connected' in exactly one word.
+  Response:    connected
+  Tokens:      19 (16 in / 3 out)
+  Cost:        ~$0.000004 (estimated — check OpenRouter dashboard for billing)
+  Time:        2.12s
+
+[2/3] Asking: What is 2 + 2? Answer with just the number.
+  Response:    4
+  Tokens:      23 (21 in / 2 out)
+  Cost:        ~$0.000004 (estimated — check OpenRouter dashboard for billing)
+  Time:        0.76s
+
+[3/3] Asking: Name one programming language in one word.
+  Response:    Python
+  Tokens:      17 (15 in / 2 out)
+  Cost:        ~$0.000003 (estimated — check OpenRouter dashboard for billing)
+  Time:        0.58s
 
 ============================================================
   ✅ VERIFICATION PASSED
+  Python:        3.13.5
+  Model:         openai/gpt-4o-mini
+  Total tokens:  59
+  Total cost:    ~$0.000012 (estimated)
+  Date:          2026-06-27T21:04:17
+
+  Post this output to #devbuddy-series to confirm.
+
+  What do you want DevBuddy to help you with?
+  _______________________________________________
 ============================================================
 ```
 
 ---
 
-## Step 6: Post to the Channel
+## Step 7: Run the Integration Test
+
+```bash
+python tests/test_integration.py
+```
+
+This validates everything end-to-end:
+
+```
+============================================================
+  DevBuddy Integration Test — Week 0
+============================================================
+
+  ✅ .env configured: model=openai/gpt-4o-mini, key=********i7U9
+  ✅ OpenRouter connected: 1.2s, tokens=15+3
+  ✅ Structured output: SmokeTest(status='ok')
+  ✅ Cost tracked: 18+5 tokens, ~$0.000006 (estimated)
+  ⏭️  Model swap skipped (set DEVBUDDY_MODEL_ALT in .env to test)
+
+============================================================
+  ✅ ALL 5 TESTS PASSED
+============================================================
+```
+
+---
+
+## Step 8: Post to the Channel
 
 Copy your terminal output and post it to `#devbuddy-series` with one sentence:
 
@@ -152,16 +169,21 @@ Copy your terminal output and post it to `#devbuddy-series` with one sentence:
 
 ---
 
-## Branch Layout — One Branch Per Week
+## Step 9: Verify Promptfoo (Optional)
 
-This repo uses **one branch per week**. `main` is the Week 0 baseline: stub files you build from. Each `week-NN` branch is that week's worked checkpoint. It adds `docs/week-NN.md`, the pre-reading, the completed solution under `src/`, and test fixtures under `shared/`.
+Promptfoo runs evals against your LLM outputs. This smoke test demonstrates:
+- **Multi-model comparison** — same prompt, GPT-4o-mini vs Gemini Flash
+- **Assertions** — does the output contain "4"? Is it valid JSON?
+- **Latency tracking** — response time measured per call
+- **Cost tracking** — token cost shown per call (automatic, no assertion needed)
 
 ```bash
-git fetch upstream
-git checkout week-02        # switch to a specific week's materials
+cd ../shared/evals
+export OPENROUTER_API_KEY=sk-or-your-key
+npx promptfoo@latest eval --config week-00-smoke.yaml
 ```
 
-Available now: `week-01` through `week-06` (Week 6 = Agentic Workflows is the latest). If you miss a session, check out the next week's branch to get a clean starting point.
+You'll see a table comparing both models across all 4 test cases — pass/fail, latency, and cost per call.
 
 ---
 
@@ -169,19 +191,9 @@ Available now: `week-01` through `week-06` (Week 6 = Agentic Workflows is the la
 
 | Problem | Fix |
 |---------|-----|
-| `make: command not found` | You're likely on Windows (`make` is a Unix tool). Use `python install.py` then `python run.py` instead. No make needed. |
-| `uv: command not found` | Fine. `python install.py` falls back to venv + pip automatically. Install uv only if you want faster setups. |
-| `OPENROUTER_API_KEY not set` | The key is auto-loaded from `python/.env`. Make sure `python/.env` exists and contains your real key (not the placeholder from `.env.example`). |
-| `ModuleNotFoundError: langchain_openai` | Run `python install.py` from the `python/` directory. |
-| `ModuleNotFoundError: src` | Run from the `python/` directory: `cd python && python run.py`. |
-| `python: command not found` | Use `python3` (e.g. `python3 install.py`). |
-| Verification script times out | Check your network. OpenRouter may be rate-limited on shared keys. |
-| Anything else | Post in `#devbuddy-series`. Don't DM — public debugging builds shared knowledge. |
-
----
-
-## What's Next
-
-- Week 1 is the kick-off session. You'll see the full DevBuddy architecture.
-- The verification script you just ran is a microcosm of what DevBuddy becomes.
-- Each week: `git fetch upstream && git checkout week-NN`, read `docs/week-NN.md`, build in `python/src/`.
+| `OPENROUTER_API_KEY not set` | Did you copy `.env.example` to `.env`? Add your key? Running from `python/`? |
+| `ModuleNotFoundError: langchain_openai` | `pip install -r requirements.txt` from `python/` |
+| `ModuleNotFoundError: src` | You must run from `python/`: `cd python && python src/verification.py` |
+| `python: command not found` | Try `python3`, or install Python 3.11+ |
+| Script times out | Check network. Shared sandbox keys may be rate-limited. |
+| Anything else | Post in `#devbuddy-series`. Public debugging builds shared knowledge. |

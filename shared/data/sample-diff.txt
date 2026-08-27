@@ -1,0 +1,9 @@
+Fix login redirect loop in auth-service
+
+Changed the session token validation in auth.py to handle expired tokens.
+Previously, expired tokens caused an infinite redirect loop.
+Now returns a 401 with a clear error message.
+
+Files changed:
+- src/auth.py (line 42-58)
+- tests/test_auth.py (line 15-22)

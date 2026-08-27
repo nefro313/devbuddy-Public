@@ -14,7 +14,7 @@
     <properties>
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <spring-ai.version>1.0.0-M6</spring-ai.version>
+        <spring-ai.version>1.0.0</spring-ai.version>
         <logback.version>1.5.12</logback.version>
         <jackson.version>2.18.0</jackson.version>
     </properties>
@@ -32,7 +32,7 @@
             <dependency>
                 <groupId>org.springframework</groupId>
                 <artifactId>spring-framework-bom</artifactId>
-                <version>6.2.1</version>
+                <version>6.2.6</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -44,13 +44,20 @@
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-context</artifactId>
-            <!-- version managed by spring-ai-bom -->
+            <!-- version managed by spring-framework-bom -->
         </dependency>
 
         <!-- Spring AI — OpenAI client pointed at OpenRouter -->
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-openai</artifactId>
+        </dependency>
+
+        <!-- Spring AI — ChatClient (moved out of spring-ai-core into
+             spring-ai-client-chat as of 1.0.0 GA) -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-client-chat</artifactId>
         </dependency>
 
         <!-- JSON parsing (model output → BuildCheck record) -->
@@ -67,12 +74,69 @@
             <version>${logback.version}</version>
         </dependency>
 
+        <!-- Testing -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.11.3</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Week 3 — RAG: Qdrant vector store (gRPC client, runs in Docker) -->
+        <dependency>
+            <groupId>io.qdrant</groupId>
+            <artifactId>client</artifactId>
+            <version>1.19.0</version>
+        </dependency>
+
+        <!-- io.qdrant:client declares its gRPC/protobuf/guava deps as runtime
+             scope, but RagService references protobuf message types directly,
+             so promote them to compile scope (versions match the client's POM). -->
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>3.25.9</version>
+        </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-api</artifactId>
+            <version>1.83.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-protobuf</artifactId>
+            <version>1.83.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-stub</artifactId>
+            <version>1.83.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>33.6.0-android</version>
+        </dependency>
+
+        <!-- Week 3 — Local embeddings: all-MiniLM-L6-v2 via DJL + ONNX Runtime -->
+        <dependency>
+            <groupId>ai.djl</groupId>
+            <artifactId>api</artifactId>
+            <version>0.36.0</version>
+        </dependency>
+        <dependency>
+            <groupId>ai.djl.huggingface</groupId>
+            <artifactId>tokenizers</artifactId>
+            <version>0.36.0</version>
+        </dependency>
+        <dependency>
+            <groupId>ai.djl.onnxruntime</groupId>
+            <artifactId>onnxruntime-engine</artifactId>
+            <version>0.36.0</version>
+        </dependency>
+
         <!--
         Later weeks uncomment as needed:
-
-        Week 3 (RAG):
-            spring-ai-chroma-store
-            spring-ai-pgvector-store
 
         Week 5 (MCP):
             spring-ai-starter-mcp-server  (or raw MCP SDK)
@@ -82,16 +146,7 @@
         -->
     </dependencies>
 
-    <repositories>
-        <repository>
-            <id>spring-milestones</id>
-            <name>Spring Milestones</name>
-            <url>https://repo.spring.io/milestone</url>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </repository>
-    </repositories>
+    <!-- GA artifacts are on Maven Central; no milestone repo needed. -->
 
     <build>
         <plugins>
@@ -113,6 +168,18 @@
                                     <mainClass>devbuddy.Verification</mainClass>
                                 </transformer>
                             </transformers>
+                            <!-- gRPC/protobuf/netty (Qdrant client) ship signed jars;
+                                 strip signature files so the fat jar still builds. -->
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
                         </configuration>
                     </execution>
                 </executions>

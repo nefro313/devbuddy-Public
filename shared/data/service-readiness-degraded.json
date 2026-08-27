@@ -1,0 +1,66 @@
+{
+  "service": {
+    "name": "payment-api",
+    "version": "1.8.3",
+    "owner_team": "payments"
+  },
+  "build": {
+    "status": "degraded",
+    "last_deploy": "2026-06-28T06:45:00Z",
+    "failing_since": "2026-06-28T07:30:00Z"
+  },
+  "deployment": {
+    "recent_deploys": [
+      {
+        "sha": "def789ghi012",
+        "author": "maria",
+        "timestamp": "2026-06-28T06:45:00Z",
+        "status": "success"
+      },
+      {
+        "sha": "jkl345mno678",
+        "author": "maria",
+        "timestamp": "2026-06-27T22:00:00Z",
+        "status": "rolling_back"
+      },
+      {
+        "sha": "pqr901stu234",
+        "author": "jordan",
+        "timestamp": "2026-06-27T20:15:00Z",
+        "status": "failed"
+      }
+    ],
+    "active_incidents": ["INC-842: payment-api latency > 5s for 15% of requests"]
+  },
+  "verdict": {
+    "ready": false,
+    "confidence": "high",
+    "blockers": [
+      "Build degraded since 07:30 — payment-api returning elevated latency",
+      "Active incident INC-842 unresolved",
+      "Rollback in recent deployment history (jkl345mno678 — 2026-06-27T22:00)"
+    ],
+    "recommended_next_steps": [
+      "Resolve INC-842 before proceeding",
+      "Investigate root cause of degradation (started 45 min after last deploy)",
+      "Consider rolling back def789ghi012 if issue persists beyond 1h"
+    ]
+  },
+  "evidence": [
+    {
+      "source": "tool",
+      "content": "get_build_status('payment-api') → degraded. Failing since 2026-06-28T07:30:00Z.",
+      "relevance_score": null
+    },
+    {
+      "source": "tool",
+      "content": "get_recent_deploys('payment-api', limit=5) → 3 deploys in last 12h. 1 success, 1 rollback, 1 failed.",
+      "relevance_score": null
+    },
+    {
+      "source": "rag",
+      "content": "payment-api runbook: degraded status = latency > 2s p99 or error rate > 1%. Escalate to on-call within 30 min.",
+      "relevance_score": 0.88
+    }
+  ]
+}

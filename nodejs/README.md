@@ -27,7 +27,7 @@ npm run verify
 | LLM Provider | OpenRouter (via `@langchain/openai`) |
 | Framework | LangChain.js + LangGraph.js |
 | Validation | Zod |
-| Vector Store | ChromaDB |
+| Vector Store | Qdrant |
 | Embeddings | @xenova/transformers |
 | MCP | @modelcontextprotocol/sdk |
 | Evals | Promptfoo |
